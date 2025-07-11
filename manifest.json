@@ -1,0 +1,10 @@
+{
+    "manifest_version": 3,
+    "name": "Prayer Times / Namaz Vakitleri",
+    "version": "0.0.1",
+    "description": "Display prayer times for your location.",
+    "icons": {
+        "48": "images/icon-48.png",
+        "128": "images/icon-128.png"
+    }
+}
