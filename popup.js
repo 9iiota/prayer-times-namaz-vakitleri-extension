@@ -1,14 +1,27 @@
 document.addEventListener("DOMContentLoaded", async () =>
 {
-    try
+    const prayerTimes = document.querySelector(".prayer-times");
+
+    for (let i = 0; i < 5; i++)
     {
-        const res = await fetch("https://namazvakitleri.diyanet.gov.tr/tr-TR/9206/ankara-icin-namaz-vakti");
-        const htmlText = await res.text();
-    } catch (err)
-    {
-        console.error("Error fetching/parsing HTML:", err);
+        const li = document.createElement("li");
+
+        const span = document.createElement("span");
+        span.textContent = `Item ${i + 1}`;
+        li.appendChild(span);
+
+        const distanceFromNext = Math.abs(i - 2);
+        li.classList.add(`distance-${distanceFromNext}`);
+
+        if (i === 2)
+        {
+            li.id = "next-time";
+            li.addEventListener("click", () =>
+            {
+                li.classList.toggle("prayed");
+            });
+        }
+
+        prayerTimes.appendChild(li);
     }
 });
-
-
-// add button on namaz site that sends info to popup or somn idk
