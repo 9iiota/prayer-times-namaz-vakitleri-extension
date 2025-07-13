@@ -1,27 +1,28 @@
 document.addEventListener("DOMContentLoaded", async () =>
 {
-    const prayerTimes = document.querySelector(".prayer-times");
+    const nextTimeDiv = document.getElementById("next-time");
+    const container = document.querySelector(".container");
+    const totalPrayers = 7;
+    const nextPrayerIndex = 4;
 
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < totalPrayers - 1; i++)
     {
-        const li = document.createElement("li");
+        const div = document.createElement("div");
+        div.className = "stacked";
+        div.textContent = `Prayer ${i + 1}`;
+        const absoluteDiff = Math.abs(i - nextPrayerIndex);
 
-        const span = document.createElement("span");
-        span.textContent = `Item ${i + 1}`;
-        li.appendChild(span);
-
-        const distanceFromNext = Math.abs(i - 2);
-        li.classList.add(`distance-${distanceFromNext}`);
-
-        if (i === 2)
+        if (i < nextPrayerIndex)
         {
-            li.id = "next-time";
-            li.addEventListener("click", () =>
-            {
-                li.classList.toggle("prayed");
-            });
+            div.style.width = `${45 - (absoluteDiff) * 5}vw`;
+            div.style.top = `${50 - (absoluteDiff) * 6}vh`;
+            container.insertBefore(div, nextTimeDiv);
         }
-
-        prayerTimes.appendChild(li);
+        else
+        {
+            div.style.width = `${45 - (absoluteDiff + 1) * 5}vw`;
+            div.style.top = `${50 + (absoluteDiff + 1) * 6}vh`;
+            container.appendChild(div);
+        }
     }
 });
