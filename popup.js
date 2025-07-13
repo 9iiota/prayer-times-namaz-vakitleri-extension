@@ -1,6 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () =>
 {
     const nextTimeDiv = document.getElementById("next-time");
+    nextTimeDiv.addEventListener("click", () =>
+    {
+        nextTimeDiv.style.backgroundColor = nextTimeDiv.style.backgroundColor === "rgb(173, 216, 230)" ? "#f0f0f0" : "#add8e6ff";
+    });
+
     const container = document.querySelector(".container");
     const totalPrayers = 7;
     const nextPrayerIndex = 4;

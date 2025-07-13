@@ -52,7 +52,6 @@ body
     transform: translate(-50%, -50%);
     border-color: transparent;
     background-color: #f0f0f0;
-
     transition: filter 0.3s ease, background-color 0.3s ease;
 }
 
