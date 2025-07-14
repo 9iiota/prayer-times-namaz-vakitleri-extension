@@ -11,9 +11,11 @@
     ],
     "content_scripts": [
 		{
-			"css": ["styles.css"],
 			"js": ["content.js"],
 			"matches": ["*://*.namazvakitleri.diyanet.gov.tr/*"]
 		}
+	],
+    "host_permissions": [
+		"*://*.namazvakitleri.diyanet.gov.tr/*"
 	]
 }
