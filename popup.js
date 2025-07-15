@@ -17,13 +17,14 @@ document.addEventListener("DOMContentLoaded", async () =>
             const prayerElements = doc.querySelector("#tab-0 > div > table > tbody");
             if (!prayerElements) throw new Error("Failed to find prayer elements in the HTML");
 
+            const weeklySchedule = [];
             const today = new Date();
             for (let i = 0; i < prayerElements.children.length; i++)
             {
                 const date = new Date(today);
                 date.setDate(today.getDate() + i);
                 const formattedDate = date.toISOString().split("T")[0];
-                console.log(`Date: ${formattedDate}`);
+                const dailySchedule = createEmptyDailySchedule(formattedDate);
 
                 const row = prayerElements.children[i];
                 for (let j = 2; j < row.children.length; j++)
@@ -31,16 +32,14 @@ document.addEventListener("DOMContentLoaded", async () =>
                     const prayerTime = row.children[j].textContent.trim();
                     if (prayerTime)
                     {
-                        console.log(`Prayer Time: ${prayerTime}`);
+                        dailySchedule.prayers[j - 2].time = prayerTime;
                     }
                 }
-                // const prayerName = row.querySelector("td:nth-child(1)").textContent.trim();
-                // const prayerTime = row.querySelector("td:nth-child(2)").textContent.trim();
 
-                // // Create PrayerTime object
-                // const prayer = new PrayerTime(prayerName, prayerTime);
-                // console.log(`Prayer: ${prayer.name}, Time: ${prayer.time}`);
+                weeklySchedule.push(DailyPrayerSchedule.fromObject(dailySchedule));
             }
+
+            localStorage.setItem("weeklyPrayerSchedule", JSON.stringify(weeklySchedule));
         }
         catch (error)
         {
@@ -49,16 +48,40 @@ document.addEventListener("DOMContentLoaded", async () =>
     });
     document.body.appendChild(button);
 
+    const localWeeklySchedule = JSON.parse(localStorage.getItem("weeklyPrayerSchedule"));
+
     const container = document.querySelector(".container");
     const totalPrayers = 6;
     const currentPrayerIndex = 0;
 
+    const today = new Date();
+    const dateStr = today.toISOString().split("T")[0];
+    const dailySchedule = localWeeklySchedule.find(schedule => schedule.date === dateStr);
+
+    const currentTime = getCurrentTime();
+    const currentPrayerTime = dailySchedule.prayers[currentPrayerIndex].time;
+    const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
+    const div = document.createElement("div");
+    div.className = "stacked";
+    div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
+    container.appendChild(div);
+
     for (let i = 0; i < totalPrayers; i++)
     {
+        const { name, time } = dailySchedule.prayers[i];
+
         const div = document.createElement("div");
         div.className = "stacked";
-        div.textContent = `Prayer ${i + 1}`;
-        div.style.width = `${90 - Math.abs(currentPrayerIndex - i) * 10}%`;
+        div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = name;
+
+        const timeSpan = document.createElement("span");
+        timeSpan.textContent = time;
+
+        div.appendChild(nameSpan);
+        div.appendChild(timeSpan);
 
         if (i === currentPrayerIndex)
         {
@@ -76,6 +99,18 @@ document.addEventListener("DOMContentLoaded", async () =>
 
         container.appendChild(div);
     }
+});
+
+const createEmptyDailySchedule = (dateStr) => ({
+    date: dateStr, // e.g., "2025-07-15"v
+    prayers: [
+        { name: "İmsak", time: null },
+        { name: "Güneş", time: null },
+        { name: "Öğle", time: null },
+        { name: "İkindi", time: null },
+        { name: "Akşam", time: null },
+        { name: "Yatsı", time: null }
+    ]
 });
 
 class PrayerTime
@@ -105,4 +140,35 @@ class DailyPrayerSchedule
         const prayers = obj.prayers.map(PrayerTime.fromObject);
         return new DailyPrayerSchedule(obj.date, prayers);
     }
+}
+
+function getCurrentTime()
+{
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+function getTimeDifference(startTime, endTime)
+{
+    // Convert HH:MM to total minutes
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    let diff = endTotal - startTotal;
+
+    // If the difference is negative, assume it's the next day
+    if (diff < 0) diff += 24 * 60;
+
+    const diffH = Math.floor(diff / 60);
+    const diffM = diff % 60;
+
+    // Pad with leading zero if needed
+    const pad = n => n.toString().padStart(2, '0');
+
+    return `${pad(diffH)}:${pad(diffM)}`;
 }
