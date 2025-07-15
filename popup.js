@@ -1,55 +1,108 @@
 document.addEventListener("DOMContentLoaded", async () =>
 {
-    // fetch(`https://namazvakitleri.diyanet.gov.tr/tr-TR/13980`)
-    //     .then(response => response.text())
-    //     .then(data =>
-    //     {
-    //         console.log(data);
-    //         // const matches = [...data.matchAll(NAMAZ_TIME_REGEX)];
-    //         // if (matches.length !== 6)
-    //         // {
-    //         //     throw new Error('Failed to match namaz times due to an invalid city code');
-    //         // }
-
-    //         // const nextImsakTime = data.match(NEXT_IMSAK_TIME_REGEX)[1];
-    //         // let namazTimesFormatted = matches.map(match => match[1]);
-    //         // namazTimesFormatted.push(nextImsakTime);
-
-    //         // callback(namazTimesFormatted);
-    //     })
-    //     .catch(() =>
-    //     {
-    //         throw new Error('Failed to fetch namaz times');
-    //     });
-
-    const nextTimeDiv = document.getElementById("next-time");
-    nextTimeDiv.addEventListener("click", () =>
+    const button = document.createElement("button");
+    button.textContent = "Fetch Namaz Times";
+    button.addEventListener("click", async () =>
     {
-        nextTimeDiv.style.backgroundColor = nextTimeDiv.style.backgroundColor === "rgb(173, 216, 230)" ? "#f4dfb4" : "#add8e6ff";
+        try
+        {
+            const response = await fetch("https://namazvakitleri.diyanet.gov.tr/tr-TR/13980");
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const htmlText = await response.text();
+
+            // Parse HTML into DOM
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+
+            const prayerElements = doc.querySelector("#tab-0 > div > table > tbody");
+            if (!prayerElements) throw new Error("Failed to find prayer elements in the HTML");
+
+            const today = new Date();
+            for (let i = 0; i < prayerElements.children.length; i++)
+            {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                const formattedDate = date.toISOString().split("T")[0];
+                console.log(`Date: ${formattedDate}`);
+
+                const row = prayerElements.children[i];
+                for (let j = 2; j < row.children.length; j++)
+                {
+                    const prayerTime = row.children[j].textContent.trim();
+                    if (prayerTime)
+                    {
+                        console.log(`Prayer Time: ${prayerTime}`);
+                    }
+                }
+                // const prayerName = row.querySelector("td:nth-child(1)").textContent.trim();
+                // const prayerTime = row.querySelector("td:nth-child(2)").textContent.trim();
+
+                // // Create PrayerTime object
+                // const prayer = new PrayerTime(prayerName, prayerTime);
+                // console.log(`Prayer: ${prayer.name}, Time: ${prayer.time}`);
+            }
+        }
+        catch (error)
+        {
+            console.error("Failed to fetch namaz times:", error);
+        }
     });
+    document.body.appendChild(button);
 
     const container = document.querySelector(".container");
-    const totalPrayers = 7;
-    const nextPrayerIndex = 7;
+    const totalPrayers = 6;
+    const currentPrayerIndex = 0;
 
-    for (let i = 0; i < totalPrayers - 1; i++)
+    for (let i = 0; i < totalPrayers; i++)
     {
-        const absoluteDiff = i < nextPrayerIndex ? nextPrayerIndex - i : i - nextPrayerIndex + 1;
         const div = document.createElement("div");
         div.className = "stacked";
         div.textContent = `Prayer ${i + 1}`;
-        div.style.width = `${75 - absoluteDiff * 7}vw`;
-        div.style.filter = `brightness(${100 - absoluteDiff * 10}%)`;
+        div.style.width = `${90 - Math.abs(currentPrayerIndex - i) * 10}%`;
 
-        if (i < nextPrayerIndex)
+        if (i === currentPrayerIndex)
         {
-            div.style.top = `${50 - absoluteDiff * 5}%`;
-            container.insertBefore(div, nextTimeDiv);
+            div.id = "current-prayer";
+            div.addEventListener("click", () =>
+            {
+                // Toggle background color on click
+                div.style.backgroundColor = div.style.backgroundColor === "rgb(173, 216, 230)" ? "#d3d3d3" : "#add8e6ff";
+            });
         }
         else
         {
-            div.style.top = `${50 + absoluteDiff * 5}vh`;
-            container.appendChild(div);
+            div.style.filter = `brightness(${100 - Math.abs(currentPrayerIndex - i) * 5}%)`; // Decrease brightness based on distance from current prayer
         }
+
+        container.appendChild(div);
     }
 });
+
+class PrayerTime
+{
+    constructor(name, time)
+    {
+        this.name = name;
+        this.time = time; // Expected format: "HH:MM"
+    }
+
+    static fromObject(obj)
+    {
+        return new PrayerTime(obj.name, obj.time);
+    }
+}
+
+class DailyPrayerSchedule
+{
+    constructor(date, prayers = [])
+    {
+        this.date = date; // Format: "YYYY-MM-DD"
+        this.prayers = prayers; // Array of PrayerTime objects
+    }
+
+    static fromObject(obj)
+    {
+        const prayers = obj.prayers.map(PrayerTime.fromObject);
+        return new DailyPrayerSchedule(obj.date, prayers);
+    }
+}
