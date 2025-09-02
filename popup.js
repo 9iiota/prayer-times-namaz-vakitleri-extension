@@ -1,5 +1,20 @@
-document.addEventListener("DOMContentLoaded", async () =>
+document.addEventListener("DOMContentLoaded", () =>
 {
+    chrome.storage.sync.get("prayerTimesLink", (data) =>
+    {
+        const prayerTimesLink =
+            data.prayerTimesLink ||
+            "https://namazvakitleri.diyanet.gov.tr/en-US/9206"; // default link
+    });
+
+    const setLocationButton = document.createElement("button");
+    setLocationButton.textContent = "Set Location";
+    setLocationButton.addEventListener("click", () =>
+    {
+        chrome.runtime.sendMessage({ action: "openLocationPage" });
+    });
+    document.body.appendChild(setLocationButton);
+
     const button = document.createElement("button");
     button.textContent = "Fetch Namaz Times";
     button.addEventListener("click", async () =>
@@ -14,32 +29,55 @@ document.addEventListener("DOMContentLoaded", async () =>
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, "text/html");
 
-            const prayerElements = doc.querySelector("#tab-0 > div > table > tbody");
-            if (!prayerElements) throw new Error("Failed to find prayer elements in the HTML");
-
-            const weeklySchedule = [];
-            const today = new Date();
-            for (let i = 0; i < prayerElements.children.length; i++)
+            const days = document.querySelectorAll("#tab-1 > div > table > tbody > tr");
+            days.forEach(day =>
             {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                const formattedDate = date.toISOString().split("T")[0];
-                const dailySchedule = createEmptyDailySchedule(formattedDate);
+                const children = day.children;
 
-                const row = prayerElements.children[i];
-                for (let j = 2; j < row.children.length; j++)
+                const dateStr = children[0].textContent.trim();
+                const [dayStr, month, year] = dateStr.split(".");
+                const date = new Date(year, month - 1, dayStr);
+
+                // Convert children to an array and slice from index 2
+                const prayerTimes = Array.from(children).slice(2);
+
+                console.log(`Date: ${date.toISOString().split("T")[0]}`);
+                prayerTimes.forEach((cell, i) =>
                 {
-                    const prayerTime = row.children[j].textContent.trim();
-                    if (prayerTime)
-                    {
-                        dailySchedule.prayers[j - 2].time = prayerTime;
-                    }
-                }
+                    console.log(`\tPrayer ${i + 1}:`, cell.textContent.trim());
+                });
+            });
 
-                weeklySchedule.push(DailyPrayerSchedule.fromObject(dailySchedule));
-            }
+            // const prayerElements = doc.querySelector("#tab-0 > div > table > tbody");
+            // if (!prayerElements) throw new Error("Failed to find prayer elements in the HTML");
 
-            localStorage.setItem("weeklyPrayerSchedule", JSON.stringify(weeklySchedule));
+            // const weeklySchedule = [];
+
+            // const today = new Date();
+            // for (let i = 0; i < prayerElements.children.length; i++)
+            // {
+            //     const date = new Date(today);
+            //     date.setDate(today.getDate() + i);
+
+            //     const formattedDate = date.toISOString().split("T")[0];
+            //     const dailySchedule = createEmptyDailySchedule(formattedDate);
+
+            //     const prayers = [];
+
+            //     const row = prayerElements.children[i];
+            //     for (let j = 2; j < row.children.length; j++)
+            //     {
+            //         const prayerTime = row.children[j].textContent.trim();
+            //         if (prayerTime)
+            //         {
+            //             prayers.push(new PrayerTime(`Prayer ${j - 1}`, prayerTime));
+            //         }
+            //     }
+
+            //     weeklySchedule.push(DailyPrayerSchedule.fromObject(dailySchedule));
+            // }
+
+            // localStorage.setItem("weeklyPrayerSchedule", JSON.stringify(weeklySchedule));
         }
         catch (error)
         {
@@ -48,69 +86,57 @@ document.addEventListener("DOMContentLoaded", async () =>
     });
     document.body.appendChild(button);
 
-    const localWeeklySchedule = JSON.parse(localStorage.getItem("weeklyPrayerSchedule"));
+    // const localWeeklySchedule = JSON.parse(localStorage.getItem("weeklyPrayerSchedule"));
 
-    const container = document.querySelector(".container");
-    const totalPrayers = 6;
-    const currentPrayerIndex = 0;
+    // const container = document.querySelector(".container");
+    // const totalPrayers = 6;
+    // const currentPrayerIndex = 0;
 
-    const today = new Date();
-    const dateStr = today.toISOString().split("T")[0];
-    const dailySchedule = localWeeklySchedule.find(schedule => schedule.date === dateStr);
+    // const today = new Date();
+    // const dateStr = today.toISOString().split("T")[0];
+    // const dailySchedule = localWeeklySchedule.find(schedule => schedule.date === dateStr);
 
-    const currentTime = getCurrentTime();
-    const currentPrayerTime = dailySchedule.prayers[currentPrayerIndex].time;
-    const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
-    const div = document.createElement("div");
-    div.className = "stacked";
-    div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
-    container.appendChild(div);
+    // const currentTime = getCurrentTime();
+    // const currentPrayerTime = dailySchedule.prayers[currentPrayerIndex].time;
+    // const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
+    // const div = document.createElement("div");
+    // div.className = "stacked";
+    // div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
+    // container.appendChild(div);
 
-    for (let i = 0; i < totalPrayers; i++)
-    {
-        const { name, time } = dailySchedule.prayers[i];
+    // for (let i = 0; i < totalPrayers; i++)
+    // {
+    //     const { name, time } = dailySchedule.prayers[i];
 
-        const div = document.createElement("div");
-        div.className = "stacked";
-        div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
+    //     const div = document.createElement("div");
+    //     div.className = "stacked";
+    //     div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
 
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = name;
+    //     const nameSpan = document.createElement("span");
+    //     nameSpan.textContent = name;
 
-        const timeSpan = document.createElement("span");
-        timeSpan.textContent = time;
+    //     const timeSpan = document.createElement("span");
+    //     timeSpan.textContent = time;
 
-        div.appendChild(nameSpan);
-        div.appendChild(timeSpan);
+    //     div.appendChild(nameSpan);
+    //     div.appendChild(timeSpan);
 
-        if (i === currentPrayerIndex)
-        {
-            div.id = "current-prayer";
-            div.addEventListener("click", () =>
-            {
-                // Toggle background color on click
-                div.style.backgroundColor = div.style.backgroundColor === "rgb(173, 216, 230)" ? "#d3d3d3" : "#add8e6ff";
-            });
-        }
-        else
-        {
-            div.style.filter = `brightness(${100 - Math.abs(currentPrayerIndex - i) * 5}%)`; // Decrease brightness based on distance from current prayer
-        }
+    //     if (i === currentPrayerIndex)
+    //     {
+    //         div.id = "current-prayer";
+    //         div.addEventListener("click", () =>
+    //         {
+    //             // Toggle background color on click
+    //             div.style.backgroundColor = div.style.backgroundColor === "rgb(173, 216, 230)" ? "#d3d3d3" : "#add8e6ff";
+    //         });
+    //     }
+    //     else
+    //     {
+    //         div.style.filter = `brightness(${100 - Math.abs(currentPrayerIndex - i) * 5}%)`; // Decrease brightness based on distance from current prayer
+    //     }
 
-        container.appendChild(div);
-    }
-});
-
-const createEmptyDailySchedule = (dateStr) => ({
-    date: dateStr, // e.g., "2025-07-15"v
-    prayers: [
-        { name: "İmsak", time: null },
-        { name: "Güneş", time: null },
-        { name: "Öğle", time: null },
-        { name: "İkindi", time: null },
-        { name: "Akşam", time: null },
-        { name: "Yatsı", time: null }
-    ]
+    //     container.appendChild(div);
+    // }
 });
 
 class PrayerTime
