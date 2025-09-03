@@ -80,22 +80,32 @@ document.addEventListener("DOMContentLoaded", () =>
         document.body.appendChild(logPrayerTimesButton);
 
         const container = document.querySelector(".container");
-        const totalPrayers = 6;
-        const currentPrayerIndex = 0;
 
         const today = new Date();
         const dateStr = today.toISOString().split("T")[0];
         const dailySchedule = prayerSchedule.find(schedule => schedule.date === dateStr);
 
+        const passedTimes = dailySchedule.times.filter(time => time <= getCurrentTime());
+        const currentPrayerTime = passedTimes[passedTimes.length - 1];
+        const currentPrayerIndex = dailySchedule.times.indexOf(currentPrayerTime);
+
         const currentTime = getCurrentTime();
-        const currentPrayerTime = dailySchedule.times[currentPrayerIndex];
-        const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
+
+        // To calculate time until next prayer, find the next time in the list
+        // Get smallest time that is greater than current time
+        // If none, take the first time of the next day
+        let nextPrayerTime = dailySchedule.times.find(time => time > currentTime);
+        if (!nextPrayerTime)
+        {
+            nextPrayerTime = prayerSchedule.find(schedule => schedule.date > dateStr)?.times[0] || dailySchedule.times[0];
+        }
+        const timeUntilNextPrayer = getTimeDifference(currentTime, nextPrayerTime);
         const div = document.createElement("div");
         div.className = "stacked";
         div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
         container.appendChild(div);
 
-        for (let i = 0; i < totalPrayers; i++)
+        for (let i = 0; i < PRAYERNAMES.length; i++)
         {
             const name = PRAYERNAMES[i];
             const time = dailySchedule.times[i];
