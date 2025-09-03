@@ -1,172 +1,136 @@
+const PRAYERNAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get("prayerTimesLink", (data) =>
+    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule"], (data) =>
     {
-        const prayerTimesLink =
-            data.prayerTimesLink ||
-            "https://namazvakitleri.diyanet.gov.tr/en-US/9206"; // default link
-    });
+        const prayerTimesLink = data.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
+        const prayerSchedule = data.prayerSchedule;
 
-    const setLocationButton = document.createElement("button");
-    setLocationButton.textContent = "Set Location";
-    setLocationButton.addEventListener("click", () =>
-    {
-        chrome.runtime.sendMessage({ action: "openLocationPage" });
-    });
-    document.body.appendChild(setLocationButton);
-
-    const button = document.createElement("button");
-    button.textContent = "Fetch Namaz Times";
-    button.addEventListener("click", async () =>
-    {
-        try
+        const setLocationButton = document.createElement("button");
+        setLocationButton.textContent = "Set Location";
+        setLocationButton.addEventListener("click", () =>
         {
-            const response = await fetch("https://namazvakitleri.diyanet.gov.tr/tr-TR/13980");
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const htmlText = await response.text();
+            chrome.runtime.sendMessage({ action: "openPrayerTimesLink" });
+        });
+        document.body.appendChild(setLocationButton);
 
-            // Parse HTML into DOM
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, "text/html");
-
-            const days = document.querySelectorAll("#tab-1 > div > table > tbody > tr");
-            days.forEach(day =>
+        const fetchNamazTimesButton = document.createElement("button");
+        fetchNamazTimesButton.textContent = "Fetch Namaz Times";
+        fetchNamazTimesButton.addEventListener("click", async () =>
+        {
+            try
             {
-                const children = day.children;
+                const prayerSchedule = [];
 
-                const dateStr = children[0].textContent.trim();
-                const [dayStr, month, year] = dateStr.split(".");
-                const date = new Date(year, month - 1, dayStr);
+                const response = await fetch(prayerTimesLink);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const htmlText = await response.text();
 
-                // Convert children to an array and slice from index 2
-                const prayerTimes = Array.from(children).slice(2);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, "text/html");
 
-                console.log(`Date: ${date.toISOString().split("T")[0]}`);
-                prayerTimes.forEach((cell, i) =>
+                const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
+                days.forEach(day =>
                 {
-                    console.log(`\tPrayer ${i + 1}:`, cell.textContent.trim());
+                    const children = day.children;
+
+                    const dateStr = children[0].textContent.trim();
+                    const [d, m, y] = dateStr.split(".");
+                    const date = new Date(y, m - 1, d);
+
+                    const timeTds = Array.from(children).slice(2);
+                    const times = timeTds.map(cell => cell.textContent.trim());
+                    const prayerTimesObj = {
+                        date: date.toISOString().split("T")[0],
+                        times: times
+                    };
+
+                    prayerSchedule.push(prayerTimesObj);
                 });
-            });
 
-            // const prayerElements = doc.querySelector("#tab-0 > div > table > tbody");
-            // if (!prayerElements) throw new Error("Failed to find prayer elements in the HTML");
+                chrome.storage.sync.set({ prayerSchedule }, () =>
+                {
+                    if (chrome.runtime.lastError)
+                    {
+                        console.error("❌ Failed to save:", chrome.runtime.lastError);
+                    } else
+                    {
+                        console.log("✅ Saved prayerSchedule successfully!");
+                    }
+                });
+            }
+            catch (error)
+            {
+                console.error("Failed to fetch namaz times:", error);
+            }
+        });
+        document.body.appendChild(fetchNamazTimesButton);
 
-            // const weeklySchedule = [];
-
-            // const today = new Date();
-            // for (let i = 0; i < prayerElements.children.length; i++)
-            // {
-            //     const date = new Date(today);
-            //     date.setDate(today.getDate() + i);
-
-            //     const formattedDate = date.toISOString().split("T")[0];
-            //     const dailySchedule = createEmptyDailySchedule(formattedDate);
-
-            //     const prayers = [];
-
-            //     const row = prayerElements.children[i];
-            //     for (let j = 2; j < row.children.length; j++)
-            //     {
-            //         const prayerTime = row.children[j].textContent.trim();
-            //         if (prayerTime)
-            //         {
-            //             prayers.push(new PrayerTime(`Prayer ${j - 1}`, prayerTime));
-            //         }
-            //     }
-
-            //     weeklySchedule.push(DailyPrayerSchedule.fromObject(dailySchedule));
-            // }
-
-            // localStorage.setItem("weeklyPrayerSchedule", JSON.stringify(weeklySchedule));
-        }
-        catch (error)
+        const logPrayerTimesButton = document.createElement("button");
+        logPrayerTimesButton.textContent = "Log Prayer Times";
+        logPrayerTimesButton.addEventListener("click", () =>
         {
-            console.error("Failed to fetch namaz times:", error);
+            chrome.storage.sync.get("prayerSchedule", (data) =>
+            {
+                const prayerSchedule = data.prayerSchedule;
+                console.log(prayerSchedule);
+            });
+        });
+        document.body.appendChild(logPrayerTimesButton);
+
+        const container = document.querySelector(".container");
+        const totalPrayers = 6;
+        const currentPrayerIndex = 0;
+
+        const today = new Date();
+        const dateStr = today.toISOString().split("T")[0];
+        const dailySchedule = prayerSchedule.find(schedule => schedule.date === dateStr);
+
+        const currentTime = getCurrentTime();
+        const currentPrayerTime = dailySchedule.times[currentPrayerIndex];
+        const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
+        const div = document.createElement("div");
+        div.className = "stacked";
+        div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
+        container.appendChild(div);
+
+        for (let i = 0; i < totalPrayers; i++)
+        {
+            const name = PRAYERNAMES[i];
+            const time = dailySchedule.times[i];
+
+            const div = document.createElement("div");
+            div.className = "stacked";
+            div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
+
+            const nameSpan = document.createElement("span");
+            nameSpan.textContent = name;
+
+            const timeSpan = document.createElement("span");
+            timeSpan.textContent = time;
+
+            div.appendChild(nameSpan);
+            div.appendChild(timeSpan);
+
+            if (i === currentPrayerIndex)
+            {
+                div.id = "current-prayer";
+                div.addEventListener("click", () =>
+                {
+                    // Toggle background color on click
+                    div.style.backgroundColor = div.style.backgroundColor === "rgb(173, 216, 230)" ? "#d3d3d3" : "#add8e6ff";
+                });
+            }
+            else
+            {
+                div.style.filter = `brightness(${100 - Math.abs(currentPrayerIndex - i) * 5}%)`; // Decrease brightness based on distance from current prayer
+            }
+
+            container.appendChild(div);
         }
     });
-    document.body.appendChild(button);
-
-    // const localWeeklySchedule = JSON.parse(localStorage.getItem("weeklyPrayerSchedule"));
-
-    // const container = document.querySelector(".container");
-    // const totalPrayers = 6;
-    // const currentPrayerIndex = 0;
-
-    // const today = new Date();
-    // const dateStr = today.toISOString().split("T")[0];
-    // const dailySchedule = localWeeklySchedule.find(schedule => schedule.date === dateStr);
-
-    // const currentTime = getCurrentTime();
-    // const currentPrayerTime = dailySchedule.prayers[currentPrayerIndex].time;
-    // const timeUntilNextPrayer = getTimeDifference(currentTime, currentPrayerTime);
-    // const div = document.createElement("div");
-    // div.className = "stacked";
-    // div.textContent = `Time until next prayer: ${timeUntilNextPrayer}`;
-    // container.appendChild(div);
-
-    // for (let i = 0; i < totalPrayers; i++)
-    // {
-    //     const { name, time } = dailySchedule.prayers[i];
-
-    //     const div = document.createElement("div");
-    //     div.className = "stacked";
-    //     div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
-
-    //     const nameSpan = document.createElement("span");
-    //     nameSpan.textContent = name;
-
-    //     const timeSpan = document.createElement("span");
-    //     timeSpan.textContent = time;
-
-    //     div.appendChild(nameSpan);
-    //     div.appendChild(timeSpan);
-
-    //     if (i === currentPrayerIndex)
-    //     {
-    //         div.id = "current-prayer";
-    //         div.addEventListener("click", () =>
-    //         {
-    //             // Toggle background color on click
-    //             div.style.backgroundColor = div.style.backgroundColor === "rgb(173, 216, 230)" ? "#d3d3d3" : "#add8e6ff";
-    //         });
-    //     }
-    //     else
-    //     {
-    //         div.style.filter = `brightness(${100 - Math.abs(currentPrayerIndex - i) * 5}%)`; // Decrease brightness based on distance from current prayer
-    //     }
-
-    //     container.appendChild(div);
-    // }
 });
-
-class PrayerTime
-{
-    constructor(name, time)
-    {
-        this.name = name;
-        this.time = time; // Expected format: "HH:MM"
-    }
-
-    static fromObject(obj)
-    {
-        return new PrayerTime(obj.name, obj.time);
-    }
-}
-
-class DailyPrayerSchedule
-{
-    constructor(date, prayers = [])
-    {
-        this.date = date; // Format: "YYYY-MM-DD"
-        this.prayers = prayers; // Array of PrayerTime objects
-    }
-
-    static fromObject(obj)
-    {
-        const prayers = obj.prayers.map(PrayerTime.fromObject);
-        return new DailyPrayerSchedule(obj.date, prayers);
-    }
-}
 
 function getCurrentTime()
 {
