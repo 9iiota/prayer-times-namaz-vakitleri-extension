@@ -71,10 +71,10 @@ body
 /* Current prayer determines container width */
 #current-prayer
 {
-    /* z-index: 1;
+    z-index: 1;
     box-shadow:
         0px 1px 5px rgba(0, 0, 0, .2),
-        0px -1px 5px rgba(0, 0, 0, .2); */
+        0px -1px 5px rgba(0, 0, 0, .2);
     font-weight: bold;
     /* width: 90%; */
     /* background-color: #d3d3d3;
