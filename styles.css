@@ -21,74 +21,44 @@ body
 
 .container
 {
+    align-items: center;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    /* gap: 0.2em; */
-    /* padding: 1em; */
     min-width: 100vw;
-    /* width: 100vw; */
-    /* width: fit-content; */
-    /* Key: width depends on child content */
-    /* max-width: 90vw; */
-    /* Optional safety limit */
-    /* border: 1px solid #e0e0e0;
-    border-radius: 8px; */
-    /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); */
 }
 
-/* Shared prayer styles */
-.stacked
+.prayer-times
 {
-    width: 100%;
+    display: grid;
+    gap: 8px;
+    padding: 8px 0px 8px 0px;
+}
 
-    box-sizing: border-box;
-    text-align: center;
+.prayer-time
+{
+    background-color: #f3f4f6;
+    border-radius: 6px;
     padding: 8px;
-    white-space: nowrap;
-    /* Prevent line breaks */
-}
-
-/* Non-current prayers get borders */
-/* .stacked:not(#current-prayer)
-{
-    border: 2px solid #d3d3d3;
-    width: 100%;
-    Full width of the container
-} */
-
-.stacked span
-{
-    width: 100%;
     text-align: center;
-    box-sizing: border-box;
-    display: block;
-    /* font-weight: bold; */
-    color: #ffffff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 1);
 }
 
-/* Current prayer determines container width */
-#current-prayer
+.prayer-time span
 {
-    z-index: 1;
-    box-shadow:
-        0px 1px 5px rgba(0, 0, 0, .2),
-        0px -1px 5px rgba(0, 0, 0, .2);
-    font-weight: bold;
-    /* width: 90%; */
-    /* background-color: #d3d3d3;
-    border: 2px solid transparent;
-    transition: filter 0.3s ease, background-color 0.3s ease;
-    padding: 8px 128px 8px 128px;
-    width: auto;
-    */
-    /* Auto width */
-    /* min-width: max-content; */
-    /* Don't shrink below content */
+    display: block;
+    padding: 2px 32px 2px 32px;
 }
 
-#current-prayer:hover
+.prayer-name
+{
+    color: #374151;
+}
+
+.time
+{
+    color: #6b7280;
+}
+
+.prayer-time:hover
 {
     cursor: pointer;
     filter: brightness(0.9);
