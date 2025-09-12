@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () =>
             const time = dailySchedule.times[i];
 
             const div = document.createElement("div");
-            div.className = "prayer-time";
+            div.className = "prayer";
             // div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
 
             const nameSpan = document.createElement("span");
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () =>
 
             const timeSpan = document.createElement("span");
             timeSpan.textContent = time;
-            timeSpan.className = "time";
+            timeSpan.className = "prayer-time";
 
             div.appendChild(nameSpan);
             div.appendChild(timeSpan);

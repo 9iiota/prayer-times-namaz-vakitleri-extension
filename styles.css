@@ -15,7 +15,7 @@ body
     justify-content: center;
     align-items: center;
     /* Let body size based on content */
-    width: var(--popup-width);
+    /* width: var(--popup-width); */
     height: 100%;
 }
 
@@ -24,7 +24,7 @@ body
     align-items: center;
     display: flex;
     flex-direction: column;
-    min-width: 100vw;
+    /* min-width: 100vw; */
 }
 
 .prayer-times
@@ -34,31 +34,38 @@ body
     padding: 8px 0px 8px 0px;
 }
 
-.prayer-time
+.prayer
 {
     background-color: #f3f4f6;
     border-radius: 6px;
-    padding: 8px;
+    margin: 0px 8px 0px 8px;
+    padding: 16px 64px 16px 64px;
     text-align: center;
 }
 
-.prayer-time span
+.prayer span
 {
     display: block;
-    padding: 2px 32px 2px 32px;
+    /* padding: 2px 32px 2px 32px; */
 }
 
 .prayer-name
 {
     color: #374151;
+    font-weight: bold;
 }
 
-.time
+.prayer-time
 {
     color: #6b7280;
 }
 
-.prayer-time:hover
+#current-prayer
+{
+    background-color: #baffde;
+}
+
+#current-prayer:hover
 {
     cursor: pointer;
     filter: brightness(0.9);
