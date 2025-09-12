@@ -9,10 +9,7 @@ document.addEventListener("DOMContentLoaded", () =>
         const prayerTimesLink = storage.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
         const prayerSchedule = storage.prayerSchedule;
 
-        const container = document.querySelector(".container");
-
         const prayerTimes = document.querySelector(".prayer-times");
-        container.appendChild(prayerTimes);
 
         const today = new Date();
         const dateStr = today.toISOString().split("T")[0];
@@ -29,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () =>
 
             const div = document.createElement("div");
             div.className = "prayer";
-            // div.style.width = `${100 - Math.abs(currentPrayerIndex - i) * 10}%`;
 
             const nameSpan = document.createElement("span");
             nameSpan.textContent = name;
@@ -45,10 +41,20 @@ document.addEventListener("DOMContentLoaded", () =>
             if (i === currentPrayerIndex)
             {
                 div.id = "current-prayer";
+                div.addEventListener("click", () =>
+                {
+                    if (div.classList.contains("prayed"))
+                        div.classList.remove("prayed");
+                    else
+                        div.classList.add("prayed");
+                });
             }
 
             prayerTimes.appendChild(div);
         }
+
+        const container = document.querySelector(".container");
+        container.style.width = container.offsetWidth + "px";
     });
 });
 
