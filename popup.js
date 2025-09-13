@@ -4,10 +4,11 @@ const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule"], (storage) =>
+    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule", "location"], (storage) =>
     {
         const prayerTimesLink = storage.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
         const prayerSchedule = storage.prayerSchedule;
+        const location = storage.location;
 
         const prayerTimes = document.querySelector(".prayer-times");
 
@@ -55,6 +56,49 @@ document.addEventListener("DOMContentLoaded", () =>
 
         const container = document.querySelector(".container");
         container.style.width = container.offsetWidth + "px";
+
+
+        // Setings button
+        const settingsButton = document.querySelector(".settings-button");
+        const overlay = document.querySelector(".overlay");
+        const closeBtn = document.querySelector(".close");
+
+        // Open popup
+        settingsButton.addEventListener("click", () =>
+        {
+            overlay.classList.remove("hidden");
+        });
+
+        // Close when clicking close button
+        closeBtn.addEventListener("click", () =>
+        {
+            overlay.classList.add("hidden");
+        });
+
+        // Close when clicking outside popup
+        overlay.addEventListener("click", (e) =>
+        {
+            if (e.target === overlay)
+            {
+                overlay.classList.add("hidden");
+            }
+        });
+
+        // Optional: Close with Escape key
+        document.addEventListener("keydown", (e) =>
+        {
+            if (e.key === "Escape")
+            {
+                overlay.classList.add("hidden");
+            }
+        });
+
+        const setLocationButton = document.querySelector("#setLocationButton");
+        setLocationButton.textContent = location;
+        setLocationButton.addEventListener("click", () =>
+        {
+            window.open(prayerTimesLink, "_blank");
+        });
     });
 });
 

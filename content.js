@@ -38,7 +38,10 @@ try
                 prayerSchedule.push(prayerTimesObj);
             });
 
-            chrome.storage.sync.set({ prayerTimesLink, prayerSchedule }, () =>
+            const cityName = toCapitalized(document.querySelectorAll(".select2-selection__rendered")[2].textContent.trim());
+            const location = cityName;
+
+            chrome.storage.sync.set({ prayerTimesLink, prayerSchedule, location }, () =>
             {
                 if (chrome.runtime.lastError)
                 {
@@ -64,4 +67,9 @@ try
 } catch (err)
 {
     console.error(err);
+}
+
+function toCapitalized(str)
+{
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
