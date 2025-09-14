@@ -73,3 +73,8 @@ function toCapitalized(str)
 {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
+
+// TODO: Create triplet array to store different prayer time calculations, sites and cities
+// let triplet = [
+//     { name: "", link: "", city: "" }
+// ]
