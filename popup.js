@@ -57,9 +57,9 @@ document.addEventListener("DOMContentLoaded", () =>
         const container = document.querySelector(".container");
         container.style.width = container.offsetWidth + "px";
 
-        const setLocationButton = document.querySelector("#setLocationButton");
-        setLocationButton.textContent = location;
-        setLocationButton.addEventListener("click", () =>
+        const locationSpan = document.querySelector("#location");
+        locationSpan.textContent = location;
+        locationSpan.addEventListener("click", () =>
         {
             window.open(prayerTimesLink, "_blank");
         });
