@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () =>
         const prayerSchedule = storage.prayerSchedule;
         const location = storage.location;
 
-        const prayerTimes = document.querySelector(".prayer-times");
+        const prayerTimes = document.querySelector(".grid-container");
 
         const today = new Date();
         const dateStr = today.toISOString().split("T")[0];
@@ -54,50 +54,12 @@ document.addEventListener("DOMContentLoaded", () =>
             prayerTimes.appendChild(div);
         }
 
-        const container = document.querySelector(".container");
-        container.style.width = container.offsetWidth + "px";
-
-        const locationSpan = document.querySelector("#location");
-        locationSpan.textContent = location;
-        locationSpan.addEventListener("click", () =>
+        const city = document.querySelector("#city");
+        city.textContent = location;
+        city.addEventListener("click", () =>
         {
             window.open(prayerTimesLink, "_blank");
         });
-
-        // // Setings button
-        // const settingsButton = document.querySelector(".settings-button");
-        // const overlay = document.querySelector(".overlay");
-        // const closeBtn = document.querySelector(".close");
-
-        // // Open popup
-        // settingsButton.addEventListener("click", () =>
-        // {
-        //     overlay.classList.remove("hidden");
-        // });
-
-        // // Close when clicking close button
-        // closeBtn.addEventListener("click", () =>
-        // {
-        //     overlay.classList.add("hidden");
-        // });
-
-        // // Close when clicking outside popup
-        // overlay.addEventListener("click", (e) =>
-        // {
-        //     if (e.target === overlay)
-        //     {
-        //         overlay.classList.add("hidden");
-        //     }
-        // });
-
-        // // Optional: Close with Escape key
-        // document.addEventListener("keydown", (e) =>
-        // {
-        //     if (e.key === "Escape")
-        //     {
-        //         overlay.classList.add("hidden");
-        //     }
-        // });
     });
 });
 
@@ -130,12 +92,4 @@ function getTimeDifference(startTime, endTime)
     const pad = n => n.toString().padStart(2, '0');
 
     return `${pad(diffH)}:${pad(diffM)}`;
-}
-
-function interpolateColor(color1, color2, factor)
-{
-    const c1 = color1.match(/\w\w/g).map(c => parseInt(c, 16));
-    const c2 = color2.match(/\w\w/g).map(c => parseInt(c, 16));
-    const result = c1.map((v, i) => Math.round(v + factor * (c2[i] - v)));
-    return `#${result.map(v => v.toString(16).padStart(2, "0")).join("")}`;
 }

@@ -9,42 +9,60 @@ body
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    /* height: 100%; */
 
     max-width: 800px;
     max-height: 600px;
 }
 
-.container
+.popup-container
 {
     align-items: center;
     display: flex;
     flex-direction: column;
+    width: 260px;
 }
 
-.prayer-times
+.grid-container
 {
     display: grid;
     gap: 8px;
+    width: 100%;
     padding: 8px 0 8px 0;
 }
 
-.prayer-times *
+.grid-container>div
 {
     margin: 0 8px 0 8px;
+}
+
+#city
+{
+    color: #374151;
+    font-weight: bold;
+    justify-content: center;
+    display: flex;
+    text-decoration: underline;
+}
+
+#city:hover
+{
+    cursor: pointer;
+    filter: brightness(1.9);
 }
 
 .prayer
 {
     background-color: #f3f4f6;
     border-radius: 6px;
-    padding: 16px 64px 16px 64px;
+    padding: 12px 0 12px 0;
     text-align: center;
 }
 
 .prayer span
 {
     display: block;
+    /* TODO: make this optional */
 }
 
 .prayer-name
@@ -64,7 +82,7 @@ body
     background-color: #ffbaba;
     /* background-color: #baebff; */
 
-    transition: background-color 1s;
+    /* transition: background-color 1s; */
 }
 
 #current-prayer.prayed
@@ -78,68 +96,12 @@ body
     filter: brightness(0.9);
 }
 
-.footer
-{
-    border-top: 1px solid #e5e7eb;
-    width: calc(100% - 16px);
-}
-
-.settings-button
-{
-    color: #6b7280;
-    cursor: pointer;
-    font-size: 24px;
-    font-weight: 900;
-    text-align: right;
-}
-
-.overlay
-{
-    align-items: center;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    height: 100%;
-    justify-content: center;
-    left: 0;
-    position: fixed;
-    top: 0;
-    width: 100%;
-    z-index: 999;
-}
-
-.popup
-{
-    background: white;
-    border-radius: 6px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    padding: 8px;
-    text-align: center;
-    width: 70%;
-}
-
-.hidden
-{
-    display: none;
-}
-
-#location
-{
-    color: #374151;
-    font-weight: bold;
-    justify-content: center;
-    display: flex;
-}
-
-#location:hover
-{
-    cursor: pointer;
-    filter: brightness(1.9);
-}
-
 /* --- Custom Select Wrapper --- */
 .custom-select
 {
-    position: relative;
+    display: flex;
+    justify-content: center;
+    /* position: relative; */
     /* width: 200px; */
     /* adjust width */
 }
@@ -151,15 +113,27 @@ body
     /* -webkit-appearance: none;
     -moz-appearance: none; */
     /* width: 100%; */
-    padding: 8px 32px 8px 32px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background-color: #f9fafb;
+    /* padding: 8px 32px 8px 32px; */
+    /* border: 1px solid #d1d5db; */
+    /* border-radius: 6px; */
+    background-color: #f3f4f6;
     color: #374151;
+    width: 100%;
+    text-align: center;
+    padding: 8px;
     /* font-size: 16px; */
-    font-weight: 500;
+    /* font-weight: 500; */
+    font-weight: bold;
     cursor: pointer;
-    margin: 8px;
+    border: none;
+    outline: none;
+    /* margin: 8px; */
+}
+
+.custom-select select:focus
+{
+    outline: none;
+    box-shadow: none;
 }
 
 /* Dropdown arrow (using CSS pseudo-element) */
@@ -177,14 +151,14 @@ body
 }
 
 /* Hover / focus effects */
-.custom-select select:hover
+/* .custom-select select:hover
 {
     background-color: #f3f4f6;
-}
+} */
 
-.custom-select select:focus
+/* .custom-select select:focus
 {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); */
 }
