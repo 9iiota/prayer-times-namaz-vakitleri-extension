@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () =>
         // console.log(ip);
 
         const coords = await getLocationData(ip);
-        const location = `${coords.city}, ${coords.country}`;
+        const location = `${coords.country}, ${coords.city}`;
         if (storage.location !== location)
         {
             chrome.storage.sync.set({ location }, () =>
@@ -103,11 +103,100 @@ document.addEventListener("DOMContentLoaded", () =>
             prayerTimesContainer.appendChild(div);
         }
 
-        const city = document.querySelector("#city");
-        city.textContent = location;
-        city.addEventListener("click", () =>
+        const citySpan = document.querySelector("#city");
+        const locationResults = document.createElement("div");
+        locationResults.style.position = "absolute";
+        locationResults.style.background = "#fff";
+        locationResults.style.border = "1px solid #ccc";
+        locationResults.style.zIndex = "1000";
+        locationResults.style.display = "none"; // hide initially
+        document.body.appendChild(locationResults);
+
+        // Example initial location
+        citySpan.textContent = location;
+
+        citySpan.addEventListener("click", () =>
         {
-            window.open(prayerTimesLink, "_blank");
+            citySpan.contentEditable = true;
+            citySpan.focus();
+            document.execCommand('selectAll', false, null);
+        });
+
+        citySpan.addEventListener("blur", () =>
+        {
+            // delay hiding results to allow click
+            setTimeout(() =>
+            {
+                citySpan.contentEditable = false;
+                locationResults.style.display = "none";
+            }, 200);
+        });
+
+        // TODO: handle saving
+        citySpan.addEventListener("keydown", async (e) =>
+        {
+            if (e.key === "Enter")
+            {
+                e.preventDefault();
+                const query = citySpan.textContent.trim();
+                if (!query) return;
+
+                // Nominatim API request
+                try
+                {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
+                        headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
+                    });
+                    const data = await res.json();
+
+                    // Show results
+                    locationResults.innerHTML = "";
+                    if (data.length === 0)
+                    {
+                        const noRes = document.createElement("div");
+                        noRes.textContent = "No results found";
+                        locationResults.appendChild(noRes);
+                    } else
+                    {
+                        data.forEach(place =>
+                        {
+                            const option = document.createElement("div");
+                            option.textContent = place.display_name;
+                            option.style.padding = "4px";
+                            option.style.cursor = "pointer";
+
+                            option.addEventListener("click", () =>
+                            {
+                                // Save selected location
+                                citySpan.textContent = place.display_name;
+                                chrome.storage.local.set({
+                                    manualLocation: {
+                                        city: place.address.city || place.address.town || place.address.village,
+                                        country: place.address.country,
+                                        lat: place.lat,
+                                        lng: place.lon,
+                                        display_name: place.display_name
+                                    }
+                                });
+                                locationResults.style.display = "none";
+                            });
+
+                            locationResults.appendChild(option);
+                        });
+                    }
+
+                    // Position results under the span
+                    const rect = citySpan.getBoundingClientRect();
+                    locationResults.style.top = `${rect.bottom + window.scrollY}px`;
+                    locationResults.style.left = `${rect.left + window.scrollX}px`;
+                    locationResults.style.width = `${rect.width}px`;
+                    locationResults.style.display = "block";
+
+                } catch (err)
+                {
+                    console.error(err);
+                }
+            }
         });
     });
 });
