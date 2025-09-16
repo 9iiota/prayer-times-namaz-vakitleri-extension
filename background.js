@@ -28,6 +28,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
 
 function populateStorageDefaults()
 {
+    // TODO: add other storage defaults
     const defaultKeys = Object.keys(DEFAULT_STORAGE_VALUES);
 
     // Fetch the values from storage for only the keys we care about.

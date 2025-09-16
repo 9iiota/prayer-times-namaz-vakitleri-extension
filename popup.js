@@ -4,26 +4,75 @@ const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule", "location"], (storage) =>
+    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule", "location", "prayerTimes", "method"], async (storage) =>
     {
+        const ip = await getPublicIP();
+        // console.log(ip);
+
+        const coords = await getLocationData(ip);
+        const location = `${coords.city}, ${coords.country}`;
+        if (storage.location !== location)
+        {
+            chrome.storage.sync.set({ location }, () =>
+            {
+                if (chrome.runtime.lastError)
+                {
+                    console.error("❌ Failed to save:", chrome.runtime.lastError);
+                } else
+                {
+                    console.log("✅ Saved location successfully!");
+                }
+            });
+        }
+
+        // console.log(coords);
+
+        // const pt = await getPrayerTimes(ip, coords.latitude, coords.longitude);
+        // console.log(pt);
+
+        const ptt = storage.prayerTimes;
+        console.log(ptt);
+        const method = storage.method || "13";
+
+        const select = document.querySelector("#method-select");
+        select.value = method;
+
+        // 2. Save value when user changes selection
+        select.addEventListener("change", async () =>
+        {
+            chrome.storage.sync.set({ method: select.value }, () =>
+            {
+                if (chrome.runtime.lastError)
+                {
+                    console.error("❌ Failed to save:", chrome.runtime.lastError);
+                } else
+                {
+                    console.log("✅ Saved method successfully!");
+                }
+            });
+
+            await getPrayerTimes(ip, coords.latitude, coords.longitude, select.value);
+        });
+
         const prayerTimesLink = storage.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
         const prayerSchedule = storage.prayerSchedule;
-        const location = storage.location;
+        const prayerTimes = storage.prayerTimes;
+        // console.log(prayerSchedule);
 
-        const prayerTimes = document.querySelector(".grid-container");
+        const prayerTimesContainer = document.querySelector(".grid-container");
 
         const today = new Date();
         const dateStr = today.toISOString().split("T")[0];
-        const dailySchedule = prayerSchedule.find(schedule => schedule.date === dateStr);
+        const todayPrayertimes = prayerTimes.find(schedule => schedule.date === dateStr);
 
-        const passedTimes = dailySchedule.times.filter(time => time <= getCurrentTime());
+        const passedTimes = todayPrayertimes.times.filter(time => time <= getCurrentTime());
         const currentPrayerTime = passedTimes[passedTimes.length - 1];
-        const currentPrayerIndex = dailySchedule.times.indexOf(currentPrayerTime);
+        const currentPrayerIndex = todayPrayertimes.times.indexOf(currentPrayerTime);
 
         for (let i = 0; i < PRAYER_NAMES.length; i++)
         {
             const name = PRAYER_NAMES[i];
-            const time = dailySchedule.times[i];
+            const time = todayPrayertimes.times[i];
 
             const div = document.createElement("div");
             div.className = "prayer";
@@ -51,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () =>
                 });
             }
 
-            prayerTimes.appendChild(div);
+            prayerTimesContainer.appendChild(div);
         }
 
         const city = document.querySelector("#city");
@@ -92,4 +141,95 @@ function getTimeDifference(startTime, endTime)
     const pad = n => n.toString().padStart(2, '0');
 
     return `${pad(diffH)}:${pad(diffM)}`;
+}
+
+async function getPublicIP()
+{
+    try
+    {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+        return json.ip;
+    }
+    catch (err)
+    {
+        console.error('IP fetch error', err);
+        return null;
+    }
+}
+
+async function getLocationData(ip)
+{
+    try
+    {
+        const res = await fetch(`https://ipwhois.app/json/${ip}`);
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+        return { latitude: json.latitude, longitude: json.longitude, country: json.country, city: json.city };
+    }
+    catch (err)
+    {
+        console.error('IP fetch error', err);
+        return null;
+    }
+}
+
+// async function getCityFromIP(ip)
+// {
+//     try
+//     {
+//         const res = await fetch(`https://ipwhois.app/json/${ip}`);
+//         if (!res.ok) throw new Error('Network response not ok');
+//         const json = await res.json();
+//         return json.city;
+//     }
+//     catch (err)
+//     {
+//         console.error('City fetch error', err);
+//         return null;
+//     }
+// }
+
+async function getPrayerTimes(ip, latitude, longitude, methodId = 13)
+{
+    try
+    {
+        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&user_ip=${ip}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+
+        const today = new Date();
+        const todayStr = today.toISOString().split("T")[0]; // e.g. "2025-09-16"
+
+        const prayerTimes = Object.entries(json.results).map(([date, times]) => ({
+            date: date.replace(/-(\d)$/, "-0$1"), // ensure day has leading 0 (e.g. 2025-09-1 → 2025-09-01)
+            times: [
+                times.Fajr,
+                times.Duha,
+                times.Dhuhr,
+                times.Asr,
+                times.Maghrib,
+                times.Isha
+            ]
+        })).filter(entry => entry.date >= todayStr); // keep only today and future;
+
+        chrome.storage.sync.set({ prayerTimes }, () =>
+        {
+            if (chrome.runtime.lastError)
+            {
+                console.error("❌ Failed to save:", chrome.runtime.lastError);
+            } else
+            {
+                console.log("✅ Saved prayer times successfully!");
+            }
+        });
+
+        return json;
+    }
+    catch (err)
+    {
+        console.error('Prayer times fetch error', err);
+        return null;
+    }
 }

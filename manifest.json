@@ -19,6 +19,8 @@
 		}
 	],
     "host_permissions": [
-		"*://*.namazvakitleri.diyanet.gov.tr/*"
+		"*://*.namazvakitleri.diyanet.gov.tr/*",
+        "*://api.ipify.org/*",
+        "*://www.islamicfinder.us/index.php/api/*"
 	]
 }
