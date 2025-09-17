@@ -1,3 +1,5 @@
+import { countryMap } from "./countryMap.js";
+
 const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
 export async function getPublicIP()
@@ -189,4 +191,36 @@ export function getTimeDifference(startTime, endTime)
     const pad = n => n.toString().padStart(2, '0');
 
     return `${pad(diffH)}: ${pad(diffM)}`;
+}
+
+export function resolveCountry(code)
+{
+    return countryMap[code] || null;
+}
+
+export async function retrieveCities(countryId)
+{
+    const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${countryId}&Culture=en-US`);
+    if (!res.ok) throw new Error('Network response not ok');
+    const json = await res.json();
+
+    const cities = json.StateRegionList.map(item => ({
+        name: item.IlceAdiEn.trim(), // use English name, trim whitespace
+        id: item.IlceID
+    }));
+    return cities;
+}
+
+export function fuzzySearch(query, options, threshold = 0.3)
+{
+    if (!query || !options || options.length === 0) return null;
+
+    const fuse = new Fuse(options, {
+        keys: ["name"],
+        threshold: threshold,
+        includeScore: true,
+    });
+
+    const results = fuse.search(query, { limit: 1 });
+    return results.length > 0 ? results[0].item : null;
 }

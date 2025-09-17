@@ -4,6 +4,10 @@ document.addEventListener("DOMContentLoaded", () =>
 {
     chrome.storage.sync.get(["location", "parameters", "prayerTimes"], async (storage) =>
     {
+        // const cities = await utils.retrieveCities(4);
+        // const bestMatch = utils.fuzzySearch("barendrecht", cities);
+        // console.log(bestMatch);
+
         const { location, parameters, prayerTimes } = storage;
 
         // Prayer time calculation method select

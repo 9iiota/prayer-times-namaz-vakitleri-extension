@@ -23,5 +23,11 @@
 		"*://*.namazvakitleri.diyanet.gov.tr/*",
         "*://api.ipify.org/*",
         "*://www.islamicfinder.us/index.php/api/*"
-	]
+	],
+    "web_accessible_resources": [
+        {
+            "resources": ["libs/fuse.min.js"],
+            "matches": ["<all_urls>"]
+        }
+    ]
 }
