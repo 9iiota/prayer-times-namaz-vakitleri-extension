@@ -2,55 +2,54 @@ import * as utils from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get(["prayerTimesLink", "prayerTimes", "location", "parameters"], async (storage) =>
+    chrome.storage.sync.get(["location", "parameters", "prayerTimes"], async (storage) =>
     {
-        const location = storage.location;
-        const parameters = storage.parameters;
+        const { location, parameters, prayerTimes } = storage;
 
-        const select = document.querySelector("#method-select");
-        select.value = parameters.methodId;
-
-        // 2. Save value when user changes selection
-        select.addEventListener("change", async () =>
+        // Prayer time calculation method select
+        const methodSelect = document.querySelector("#method-select");
+        methodSelect.value = parameters.methodId;
+        methodSelect.addEventListener("change", async () =>
         {
             chrome.storage.sync.get(["parameters"], async (storage) =>
             {
                 if (chrome.runtime.lastError)
                 {
+                    // TODO: Normalize error handling throughout or function
                     console.error("❌ Failed to get storage:", chrome.runtime.lastError);
                     return;
                 }
-                if (!storage.parameters) return; // need location data to fetch prayer times
 
                 let { countryCode, postCode, latitude, longitude, methodId } = storage.parameters;
-                methodId = select.value;
-                const parameters = { countryCode, postCode, latitude, longitude, methodId };
+                methodId = methodSelect.value;
 
+                const parameters = { countryCode, postCode, latitude, longitude, methodId };
                 chrome.storage.sync.set({ parameters }, () =>
                 {
                     if (chrome.runtime.lastError)
                     {
+                        // TODO: Normalize error handling throughout or function
                         console.error("❌ Failed to save:", chrome.runtime.lastError);
                     }
                     else
                     {
+                        console.log(parameters);
                         console.log("✅ Saved parameters successfully!");
                     }
                 });
 
-                await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, select.value);
+                if (!countryCode || !postCode || !latitude || !longitude) return;
+
+                await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value);
+                utils.displayTimes(storage.prayerTimes);
             });
         });
 
-        const prayerTimesLink = storage.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
-        const prayerSchedule = storage.prayerSchedule;
-        const prayerTimes = storage.prayerTimes;
-        console.log(prayerTimes);
-        // console.log(prayerSchedule);
+
+
 
         utils.displayTimes(prayerTimes);
 
-        const citySpan = document.querySelector("#city");
         const locationResults = document.createElement("div");
         locationResults.style.position = "absolute";
         locationResults.style.background = "#fff";
@@ -59,8 +58,11 @@ document.addEventListener("DOMContentLoaded", () =>
         // locationResults.style.display = "none"; // hide initially
         document.body.appendChild(locationResults);
 
-        // Example initial location
-        console.log(location);
+
+
+
+
+        const citySpan = document.querySelector("#city");
         citySpan.textContent = location || "Click to set location";
 
         citySpan.addEventListener("click", () =>
@@ -132,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () =>
 
                                 const countryCode = data.address.country_code;
                                 const postCode = data.address.postcode.split(" ")[0];
-                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: select.value };
+                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value };
 
                                 chrome.storage.sync.set({ location, parameters }, () =>
                                 {

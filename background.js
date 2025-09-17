@@ -1,99 +1,47 @@
-import * as utils from "./utils.js";
-
-const DEFAULT_STORAGE_VALUES = {
-    locationData: null,
-    prayerTimes: null,
-    method: 13,
+const DEFAULT_STORAGE_VALUES =
+{
+    location: "Click to set location",
+    parameters:
+    {
+        countryCode: null,
+        postCode: null,
+        latitude: null,
+        longitude: null,
+        methodId: 13
+    },
 };
 
-chrome.runtime.onInstalled.addListener(() =>
+chrome.runtime.onInstalled.addListener(populateStorage);
+chrome.runtime.onStartup.addListener(populateStorage);
+
+async function populateStorage()
 {
-    // chrome.storage.sync.clear()
-    populateStorage();
-});
-
-chrome.runtime.onStartup.addListener(() =>
-{
-    populateStorage();
-});
-
-// chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
-// {
-//     if (msg.action === "openPrayerTimesLink")
-//     {
-//         chrome.storage.sync.get("prayerTimesLink", (storage) =>
-//         {
-//             const prayerTimesLink = storage.prayerTimesLink;
-//             if (prayerTimesLink)
-//             {
-//                 chrome.tabs.create({ url: prayerTimesLink });
-//             }
-//         });
-//     }
-// });
-
-function populateStorage()
-{
-    const defaultKeys = Object.keys(DEFAULT_STORAGE_VALUES);
-
-    chrome.storage.sync.get(defaultKeys, async (storage) =>
+    try
     {
-        if (chrome.runtime.lastError)
-        {
-            console.error("❌ Failed to get storage:", chrome.runtime.lastError);
-            return;
-        }
+        const keys = Object.keys(DEFAULT_STORAGE_VALUES);
+        const storage = await chrome.storage.sync.get(keys);
 
         const toSet = {};
-        // let ip = null;
-        // let locationData = null;
-
-        // Check "method" default
-        if (storage.method === undefined)
+        for (const [key, defaultValue] of Object.entries(DEFAULT_STORAGE_VALUES))
         {
-            toSet.method = DEFAULT_STORAGE_VALUES.method;
-        }
-
-        // Check "prayerTimes" default
-        if (!storage.prayerTimes)
-        {
-            if (!storage.locationData) return; // location is required to fetch prayer times
-
-            try
+            if (storage[key] === undefined)
             {
-                if (!ip)
-                {
-                    ip = await utils.getPublicIP();
-                    locationData = await utils.getLocationData(ip);
-                }
-
-                const prayerTimes = await utils.getPrayerTimes(
-                    ip,
-                    locationData.latitude,
-                    locationData.longitude,
-                    storage.method || DEFAULT_STORAGE_VALUES.method
-                );
-
-                toSet.prayerTimes = prayerTimes;
-            }
-            catch (err)
-            {
-                console.error("❌ Failed to fetch prayer times:", err);
+                toSet[key] = defaultValue;
             }
         }
 
         if (Object.keys(toSet).length > 0)
         {
-            chrome.storage.sync.set(toSet, () =>
-            {
-                if (chrome.runtime.lastError)
-                {
-                    console.error("❌ Failed to set default values:", chrome.runtime.lastError);
-                } else
-                {
-                    console.log("✅ Populated default storage values:", toSet);
-                }
-            });
+            await chrome.storage.sync.set(toSet);
+            console.log("✅ Populated default storage values:", toSet);
         }
-    });
+        else
+        {
+            console.log("ℹ️ Storage already initialized.");
+        }
+    }
+    catch (err)
+    {
+        console.error("❌ Failed to populate storage:", err);
+    }
 }

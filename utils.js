@@ -84,51 +84,58 @@ export async function getPrayerTimes(countryCode, postCode, latitude, longitude,
 
 export function displayTimes(prayerTimes)
 {
-    document.querySelectorAll(".prayer").forEach(el => el.remove());
-
     const container = document.querySelector(".grid-container");
+    const today = new Date().toISOString().split("T")[0];
+    const todayTimes = prayerTimes.find(times => times.date === today);
+    if (!todayTimes) return;
 
-    const today = new Date();
-    const dateStr = today.toISOString().split("T")[0];
-    const todayTimes = prayerTimes.find(times => times.date === dateStr);
+    // Find current prayer index
+    const now = getCurrentTime();
+    const passedTimes = todayTimes.times.filter(time => time <= now);
+    const currentPrayerIndex = todayTimes.times.indexOf(passedTimes.at(-1));
 
-    const passedTimes = todayTimes.times.filter(time => time <= getCurrentTime());
-    const currentPrayerTime = passedTimes[passedTimes.length - 1];
-    const currentPrayerIndex = todayTimes.times.indexOf(currentPrayerTime);
+    // Clear old "current-prayer" marker
+    document.querySelectorAll("#current-prayer").forEach(el => el.removeAttribute("id"));
 
-    for (let i = 0; i < PRAYER_NAMES.length; i++)
+    PRAYER_NAMES.forEach((name, i) =>
     {
-        const name = PRAYER_NAMES[i];
-        const time = todayTimes.times[i];
+        let div = container.querySelectorAll(".prayer")[i];
 
-        const div = document.createElement("div");
-        div.className = "prayer";
+        // Create element if missing
+        if (!div)
+        {
+            div = document.createElement("div");
+            div.className = "prayer";
 
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = name;
-        nameSpan.className = "prayer-name";
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "prayer-name";
+            nameSpan.textContent = name;
 
-        const timeSpan = document.createElement("span");
-        timeSpan.textContent = time;
-        timeSpan.className = "prayer-time";
+            const timeSpan = document.createElement("span");
+            timeSpan.className = "prayer-time";
 
-        div.appendChild(nameSpan);
-        div.appendChild(timeSpan);
+            div.appendChild(nameSpan);
+            div.appendChild(timeSpan);
 
+            // Add toggle listener once
+            div.addEventListener("click", () =>
+            {
+                div.classList.toggle("prayed");
+            });
+
+            container.appendChild(div);
+        }
+
+        // Update time
+        const timeSpan = div.querySelector(".prayer-time");
+        timeSpan.textContent = todayTimes.times[i];
+
+        // Highlight current prayer
         if (i === currentPrayerIndex)
         {
             div.id = "current-prayer";
-            div.addEventListener("click", () =>
-            {
-                if (div.classList.contains("prayed"))
-                    div.classList.remove("prayed");
-                else
-                    div.classList.add("prayed");
-            });
         }
-
-        container.appendChild(div);
-    }
+    });
 }
 
 export function getCurrentTime()
