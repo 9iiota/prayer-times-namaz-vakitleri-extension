@@ -19,7 +19,7 @@ body
     align-items: center;
     display: flex;
     flex-direction: column;
-    width: 260px;
+    /* width: 260px; */
 }
 
 .grid-container
@@ -35,12 +35,16 @@ body
     margin: 0 8px 0 8px;
 }
 
+.location
+{
+    text-align: center;
+}
+
 #city
 {
     color: #374151;
     font-weight: bold;
-    justify-content: center;
-    display: flex;
+    display: inline;
     text-decoration: underline;
 }
 
@@ -54,7 +58,7 @@ body
 {
     background-color: #f3f4f6;
     border-radius: 6px;
-    padding: 12px 0 12px 0;
+    padding: 12px 86px 12px 86px;
     text-align: center;
 }
 
