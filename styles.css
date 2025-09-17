@@ -12,6 +12,9 @@ body
 
     max-width: 800px;
     max-height: 600px;
+
+    height: 556px;
+    width: 260px;
 }
 
 .popup-container
@@ -20,6 +23,7 @@ body
     display: flex;
     flex-direction: column;
     /* width: 260px; */
+    height: 100%;
 }
 
 .grid-container

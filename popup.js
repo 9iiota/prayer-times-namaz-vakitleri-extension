@@ -2,13 +2,9 @@ import * as utils from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get(["location", "parameters", "prayerTimes"], async (storage) =>
+    chrome.storage.sync.get(["parameters", "prayerTimes"], async (storage) =>
     {
-        // const cities = await utils.retrieveCities(4);
-        // const bestMatch = utils.fuzzySearch("barendrecht", cities);
-        // console.log(bestMatch);
-
-        const { location, parameters, prayerTimes } = storage;
+        const { parameters, prayerTimes } = storage;
 
         // Prayer time calculation method select
         const methodSelect = document.querySelector("#method-select");
@@ -24,28 +20,38 @@ document.addEventListener("DOMContentLoaded", () =>
                     return;
                 }
 
-                let { countryCode, postCode, latitude, longitude, methodId } = storage.parameters;
+                let { countryCode, postCode, latitude, longitude, methodId, country, city } = storage.parameters;
                 methodId = methodSelect.value;
 
-                const parameters = { countryCode, postCode, latitude, longitude, methodId };
+                const parameters = { countryCode, postCode, latitude, longitude, methodId, country, city };
                 utils.saveToStorage("parameters", parameters);
 
                 if (!countryCode || !postCode || !latitude || !longitude) return;
 
-                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value);
+                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value, country, city);
                 utils.saveToStorage("prayerTimes", prayerTimes);
                 utils.displayTimes(prayerTimes);
             });
         });
 
-        utils.displayTimes(prayerTimes);
+        if (prayerTimes)
+        {
+            utils.displayTimes(prayerTimes);
+        }
 
         const locationResults = document.createElement("div");
         locationResults.className = "location-results";
         document.body.appendChild(locationResults);
 
         const citySpan = document.querySelector("#city");
-        citySpan.textContent = location || "Click to set location";
+        if (parameters.city && parameters.country)
+        {
+            citySpan.textContent = `${parameters.city}, ${parameters.country}`;
+        }
+        else
+        {
+            citySpan.textContent = "Click to set location";
+        }
         citySpan.addEventListener("click", () =>
         {
             citySpan.contentEditable = true;
@@ -108,16 +114,15 @@ document.addEventListener("DOMContentLoaded", () =>
 
                                 const countryCode = data.address.country_code;
                                 const postCode = data.address.postcode.split(" ")[0];
-                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value };
+                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value, country: place.address.country, city: place.address.city || place.address.town };
 
                                 utils.saveToStorage({
-                                    location: location,
                                     parameters: parameters
                                 });
 
                                 locationResults.style.display = "none";
 
-                                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, place.lat, place.lon, methodSelect.value);
+                                const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, methodSelect.value, parameters.country, parameters.city);
                                 utils.saveToStorage("prayerTimes", prayerTimes);
                                 utils.displayTimes(prayerTimes);
                             });

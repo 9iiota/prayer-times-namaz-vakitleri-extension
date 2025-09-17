@@ -1,13 +1,14 @@
 const DEFAULT_STORAGE_VALUES =
 {
-    location: "Click to set location",
     parameters:
     {
         countryCode: null,
         postCode: null,
         latitude: null,
         longitude: null,
-        methodId: 13
+        methodId: 13,
+        country: null,
+        city: null
     },
 };
 
@@ -16,6 +17,7 @@ chrome.runtime.onStartup.addListener(populateStorage);
 
 async function populateStorage()
 {
+    // chrome.storage.sync.clear();
     try
     {
         const keys = Object.keys(DEFAULT_STORAGE_VALUES);

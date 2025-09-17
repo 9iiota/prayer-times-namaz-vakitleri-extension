@@ -40,8 +40,59 @@ export async function getLocationData(ip)
     }
 }
 
-export async function getPrayerTimes(countryCode, postCode, latitude, longitude, methodId = 13)
+export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, city = null)
 {
+    if (methodId == 13)
+    {
+        try
+        {
+            const countryId = Object.keys(countryMap).find(key => countryMap[key] === country);
+            if (!countryId) throw new Error('Country not found in countryMap');
+
+            const cities = await retrieveCities(countryId);
+            if (cities.length === 0) throw new Error('No cities found for country');
+
+            const bestMatch = fuzzySearch(city, cities);
+            if (!bestMatch) throw new Error('No matching city found');
+
+            console.log(bestMatch);
+
+            const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${bestMatch.id}`);
+            if (!res.ok) throw new Error('Network response not ok');
+            const htmlText = await res.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+
+            const prayerTimes = [];
+            const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
+            days.forEach(day =>
+            {
+                const children = day.children;
+
+                const dateStr = children[0].textContent.trim();
+                const [d, m, y] = dateStr.split(".");
+                const date = new Date(y, m - 1, d, 12); // Set to noon to avoid timezone issues
+
+                const timeTds = Array.from(children).slice(2);
+                const times = timeTds.map(cell => cell.textContent.trim());
+                const prayerTimesObj = {
+                    date: date.toISOString().split("T")[0],
+                    times: times
+                };
+
+                prayerTimes.push(prayerTimesObj);
+            });
+
+            return prayerTimes;
+        }
+        catch (err)
+        {
+            console.error('Prayer times fetch error', err);
+            return null;
+        }
+    }
+
     try
     {
         const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${postCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
@@ -62,6 +113,7 @@ export async function getPrayerTimes(countryCode, postCode, latitude, longitude,
                 times.Isha
             ]
         })).filter(entry => entry.date >= todayStr); // keep only today and future;
+
         return prayerTimes;
     }
     catch (err)
@@ -88,7 +140,7 @@ export function displayTimes(prayerTimes)
 
     PRAYER_NAMES.forEach((name, i) =>
     {
-        console.log(name, i);
+        // console.log(name, i);
         let div = container.querySelectorAll(".prayer")[i];
 
         // Create element if missing
@@ -133,7 +185,7 @@ export function getCurrentTime()
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${hours}: ${minutes}`;
+    return `${hours}:${minutes}`;
 }
 
 export function saveToStorage(keyOrObject, value)
