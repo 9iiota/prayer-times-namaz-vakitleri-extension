@@ -1,107 +1,54 @@
-// TODO: ALLES ZELFDE WIDTH BEHALVE CURRENT DIE IS THICKER
-
-const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+import * as utils from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () =>
 {
-    chrome.storage.sync.get(["prayerTimesLink", "prayerSchedule", "location", "prayerTimes", "method"], async (storage) =>
+    chrome.storage.sync.get(["prayerTimesLink", "prayerTimes", "location", "parameters"], async (storage) =>
     {
-        const ip = await getPublicIP();
-        // console.log(ip);
-
-        const coords = await getLocationData(ip);
-        const location = `${coords.country}, ${coords.city}`;
-        if (storage.location !== location)
-        {
-            chrome.storage.sync.set({ location }, () =>
-            {
-                if (chrome.runtime.lastError)
-                {
-                    console.error("❌ Failed to save:", chrome.runtime.lastError);
-                } else
-                {
-                    console.log("✅ Saved location successfully!");
-                }
-            });
-        }
-
-        // console.log(coords);
-
-        // const pt = await getPrayerTimes(ip, coords.latitude, coords.longitude);
-        // console.log(pt);
-
-        const ptt = storage.prayerTimes;
-        console.log(ptt);
-        const method = storage.method || "13";
+        const location = storage.location;
+        const parameters = storage.parameters;
 
         const select = document.querySelector("#method-select");
-        select.value = method;
+        select.value = parameters.methodId;
 
         // 2. Save value when user changes selection
         select.addEventListener("change", async () =>
         {
-            chrome.storage.sync.set({ method: select.value }, () =>
+            chrome.storage.sync.get(["parameters"], async (storage) =>
             {
                 if (chrome.runtime.lastError)
                 {
-                    console.error("❌ Failed to save:", chrome.runtime.lastError);
-                } else
-                {
-                    console.log("✅ Saved method successfully!");
+                    console.error("❌ Failed to get storage:", chrome.runtime.lastError);
+                    return;
                 }
-            });
+                if (!storage.parameters) return; // need location data to fetch prayer times
 
-            await getPrayerTimes(ip, coords.latitude, coords.longitude, select.value);
+                let { countryCode, postCode, latitude, longitude, methodId } = storage.parameters;
+                methodId = select.value;
+                const parameters = { countryCode, postCode, latitude, longitude, methodId };
+
+                chrome.storage.sync.set({ parameters }, () =>
+                {
+                    if (chrome.runtime.lastError)
+                    {
+                        console.error("❌ Failed to save:", chrome.runtime.lastError);
+                    }
+                    else
+                    {
+                        console.log("✅ Saved parameters successfully!");
+                    }
+                });
+
+                await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, select.value);
+            });
         });
 
         const prayerTimesLink = storage.prayerTimesLink || "https://namazvakitleri.diyanet.gov.tr/en-US/9206";
         const prayerSchedule = storage.prayerSchedule;
         const prayerTimes = storage.prayerTimes;
+        console.log(prayerTimes);
         // console.log(prayerSchedule);
 
-        const prayerTimesContainer = document.querySelector(".grid-container");
-
-        const today = new Date();
-        const dateStr = today.toISOString().split("T")[0];
-        const todayPrayertimes = prayerTimes.find(schedule => schedule.date === dateStr);
-
-        const passedTimes = todayPrayertimes.times.filter(time => time <= getCurrentTime());
-        const currentPrayerTime = passedTimes[passedTimes.length - 1];
-        const currentPrayerIndex = todayPrayertimes.times.indexOf(currentPrayerTime);
-
-        for (let i = 0; i < PRAYER_NAMES.length; i++)
-        {
-            const name = PRAYER_NAMES[i];
-            const time = todayPrayertimes.times[i];
-
-            const div = document.createElement("div");
-            div.className = "prayer";
-
-            const nameSpan = document.createElement("span");
-            nameSpan.textContent = name;
-            nameSpan.className = "prayer-name";
-
-            const timeSpan = document.createElement("span");
-            timeSpan.textContent = time;
-            timeSpan.className = "prayer-time";
-
-            div.appendChild(nameSpan);
-            div.appendChild(timeSpan);
-
-            if (i === currentPrayerIndex)
-            {
-                div.id = "current-prayer";
-                div.addEventListener("click", () =>
-                {
-                    if (div.classList.contains("prayed"))
-                        div.classList.remove("prayed");
-                    else
-                        div.classList.add("prayed");
-                });
-            }
-
-            prayerTimesContainer.appendChild(div);
-        }
+        utils.displayTimes(prayerTimes);
 
         const citySpan = document.querySelector("#city");
         const locationResults = document.createElement("div");
@@ -109,11 +56,12 @@ document.addEventListener("DOMContentLoaded", () =>
         locationResults.style.background = "#fff";
         locationResults.style.border = "1px solid #ccc";
         locationResults.style.zIndex = "1000";
-        locationResults.style.display = "none"; // hide initially
+        // locationResults.style.display = "none"; // hide initially
         document.body.appendChild(locationResults);
 
         // Example initial location
-        citySpan.textContent = location;
+        console.log(location);
+        citySpan.textContent = location || "Click to set location";
 
         citySpan.addEventListener("click", () =>
         {
@@ -128,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () =>
             setTimeout(() =>
             {
                 citySpan.contentEditable = false;
-                locationResults.style.display = "none";
+                // locationResults.style.display = "none";
             }, 200);
         });
 
@@ -144,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () =>
                 // Nominatim API request
                 try
                 {
+                    console.log("joe");
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
                         headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
                     });
@@ -153,11 +102,14 @@ document.addEventListener("DOMContentLoaded", () =>
                     locationResults.innerHTML = "";
                     if (data.length === 0)
                     {
+                        console.log("jaaa");
                         const noRes = document.createElement("div");
                         noRes.textContent = "No results found";
                         locationResults.appendChild(noRes);
-                    } else
+                    }
+                    else
                     {
+                        console.log(data);
                         data.forEach(place =>
                         {
                             const option = document.createElement("div");
@@ -165,20 +117,36 @@ document.addEventListener("DOMContentLoaded", () =>
                             option.style.padding = "4px";
                             option.style.cursor = "pointer";
 
-                            option.addEventListener("click", () =>
+                            option.addEventListener("click", async () =>
                             {
+                                console.log(place);
                                 // Save selected location
                                 citySpan.textContent = place.display_name;
-                                chrome.storage.local.set({
-                                    manualLocation: {
-                                        city: place.address.city || place.address.town || place.address.village,
-                                        country: place.address.country,
-                                        lat: place.lat,
-                                        lng: place.lon,
-                                        display_name: place.display_name
+                                const location = `${place.address.city}, ${place.address.country}`;
+                                const coordinates = { lat: place.lat, lon: place.lon };
+
+                                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
+                                    headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
+                                });
+                                const data = await res.json();
+
+                                const countryCode = data.address.country_code;
+                                const postCode = data.address.postcode.split(" ")[0];
+                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: select.value };
+
+                                chrome.storage.sync.set({ location, parameters }, () =>
+                                {
+                                    if (chrome.runtime.lastError)
+                                    {
+                                        console.error("❌ Failed to save:", chrome.runtime.lastError);
+                                    }
+                                    else
+                                    {
+                                        console.log("✅ Saved parameters successfully!");
                                     }
                                 });
-                                locationResults.style.display = "none";
+
+                                // locationResults.style.display = "none";
                             });
 
                             locationResults.appendChild(option);
@@ -192,7 +160,8 @@ document.addEventListener("DOMContentLoaded", () =>
                     locationResults.style.width = `${rect.width}px`;
                     locationResults.style.display = "block";
 
-                } catch (err)
+                }
+                catch (err)
                 {
                     console.error(err);
                 }
@@ -200,14 +169,6 @@ document.addEventListener("DOMContentLoaded", () =>
         });
     });
 });
-
-function getCurrentTime()
-{
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-}
 
 function getTimeDifference(startTime, endTime)
 {
@@ -229,96 +190,5 @@ function getTimeDifference(startTime, endTime)
     // Pad with leading zero if needed
     const pad = n => n.toString().padStart(2, '0');
 
-    return `${pad(diffH)}:${pad(diffM)}`;
-}
-
-async function getPublicIP()
-{
-    try
-    {
-        const res = await fetch('https://api.ipify.org?format=json');
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-        return json.ip;
-    }
-    catch (err)
-    {
-        console.error('IP fetch error', err);
-        return null;
-    }
-}
-
-async function getLocationData(ip)
-{
-    try
-    {
-        const res = await fetch(`https://ipwhois.app/json/${ip}`);
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-        return { latitude: json.latitude, longitude: json.longitude, country: json.country, city: json.city };
-    }
-    catch (err)
-    {
-        console.error('IP fetch error', err);
-        return null;
-    }
-}
-
-// async function getCityFromIP(ip)
-// {
-//     try
-//     {
-//         const res = await fetch(`https://ipwhois.app/json/${ip}`);
-//         if (!res.ok) throw new Error('Network response not ok');
-//         const json = await res.json();
-//         return json.city;
-//     }
-//     catch (err)
-//     {
-//         console.error('City fetch error', err);
-//         return null;
-//     }
-// }
-
-async function getPrayerTimes(ip, latitude, longitude, methodId = 13)
-{
-    try
-    {
-        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&user_ip=${ip}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-
-        const today = new Date();
-        const todayStr = today.toISOString().split("T")[0]; // e.g. "2025-09-16"
-
-        const prayerTimes = Object.entries(json.results).map(([date, times]) => ({
-            date: date.replace(/-(\d)$/, "-0$1"), // ensure day has leading 0 (e.g. 2025-09-1 → 2025-09-01)
-            times: [
-                times.Fajr,
-                times.Duha,
-                times.Dhuhr,
-                times.Asr,
-                times.Maghrib,
-                times.Isha
-            ]
-        })).filter(entry => entry.date >= todayStr); // keep only today and future;
-
-        chrome.storage.sync.set({ prayerTimes }, () =>
-        {
-            if (chrome.runtime.lastError)
-            {
-                console.error("❌ Failed to save:", chrome.runtime.lastError);
-            } else
-            {
-                console.log("✅ Saved prayer times successfully!");
-            }
-        });
-
-        return json;
-    }
-    catch (err)
-    {
-        console.error('Prayer times fetch error', err);
-        return null;
-    }
+    return `${pad(diffH)}: ${pad(diffM)}`;
 }
