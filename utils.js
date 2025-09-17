@@ -45,7 +45,6 @@ export async function getPrayerTimes(countryCode, postCode, latitude, longitude,
         const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${postCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
-        console.log(json);
 
         const today = new Date();
         const todayStr = today.toISOString().split("T")[0]; // e.g. "2025-09-16"
@@ -67,7 +66,8 @@ export async function getPrayerTimes(countryCode, postCode, latitude, longitude,
             if (chrome.runtime.lastError)
             {
                 console.error("❌ Failed to save:", chrome.runtime.lastError);
-            } else
+            }
+            else
             {
                 console.log("✅ Saved prayer times successfully!");
             }
@@ -99,6 +99,7 @@ export function displayTimes(prayerTimes)
 
     PRAYER_NAMES.forEach((name, i) =>
     {
+        console.log(name, i);
         let div = container.querySelectorAll(".prayer")[i];
 
         // Create element if missing

@@ -33,15 +33,14 @@ document.addEventListener("DOMContentLoaded", () =>
                     }
                     else
                     {
-                        console.log(parameters);
                         console.log("✅ Saved parameters successfully!");
                     }
                 });
 
                 if (!countryCode || !postCode || !latitude || !longitude) return;
 
-                await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value);
-                utils.displayTimes(storage.prayerTimes);
+                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value);
+                utils.displayTimes(prayerTimes);
             });
         });
 
@@ -94,7 +93,6 @@ document.addEventListener("DOMContentLoaded", () =>
                 // Nominatim API request
                 try
                 {
-                    console.log("joe");
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
                         headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
                     });
@@ -104,14 +102,12 @@ document.addEventListener("DOMContentLoaded", () =>
                     locationResults.innerHTML = "";
                     if (data.length === 0)
                     {
-                        console.log("jaaa");
                         const noRes = document.createElement("div");
                         noRes.textContent = "No results found";
                         locationResults.appendChild(noRes);
                     }
                     else
                     {
-                        console.log(data);
                         data.forEach(place =>
                         {
                             const option = document.createElement("div");
@@ -121,11 +117,9 @@ document.addEventListener("DOMContentLoaded", () =>
 
                             option.addEventListener("click", async () =>
                             {
-                                console.log(place);
                                 // Save selected location
-                                citySpan.textContent = place.display_name;
-                                const location = `${place.address.city}, ${place.address.country}`;
-                                const coordinates = { lat: place.lat, lon: place.lon };
+                                const location = `${place.address.city || place.address.town}, ${place.address.country}`;
+                                citySpan.textContent = location;
 
                                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
                                     headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
@@ -148,7 +142,10 @@ document.addEventListener("DOMContentLoaded", () =>
                                     }
                                 });
 
-                                // locationResults.style.display = "none";
+                                locationResults.style.display = "none";
+
+                                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, place.lat, place.lon, methodSelect.value);
+                                utils.displayTimes(prayerTimes);
                             });
 
                             locationResults.appendChild(option);
