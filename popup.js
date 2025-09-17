@@ -24,53 +24,30 @@ document.addEventListener("DOMContentLoaded", () =>
                 methodId = methodSelect.value;
 
                 const parameters = { countryCode, postCode, latitude, longitude, methodId };
-                chrome.storage.sync.set({ parameters }, () =>
-                {
-                    if (chrome.runtime.lastError)
-                    {
-                        // TODO: Normalize error handling throughout or function
-                        console.error("❌ Failed to save:", chrome.runtime.lastError);
-                    }
-                    else
-                    {
-                        console.log("✅ Saved parameters successfully!");
-                    }
-                });
+                utils.saveToStorage("parameters", parameters);
 
                 if (!countryCode || !postCode || !latitude || !longitude) return;
 
                 const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value);
+                utils.saveToStorage("prayerTimes", prayerTimes);
                 utils.displayTimes(prayerTimes);
             });
         });
 
-
-
-
         utils.displayTimes(prayerTimes);
 
         const locationResults = document.createElement("div");
-        locationResults.style.position = "absolute";
-        locationResults.style.background = "#fff";
-        locationResults.style.border = "1px solid #ccc";
-        locationResults.style.zIndex = "1000";
-        // locationResults.style.display = "none"; // hide initially
+        locationResults.className = "location-results";
         document.body.appendChild(locationResults);
-
-
-
-
 
         const citySpan = document.querySelector("#city");
         citySpan.textContent = location || "Click to set location";
-
         citySpan.addEventListener("click", () =>
         {
             citySpan.contentEditable = true;
             citySpan.focus();
             document.execCommand('selectAll', false, null);
         });
-
         citySpan.addEventListener("blur", () =>
         {
             // delay hiding results to allow click
@@ -80,10 +57,9 @@ document.addEventListener("DOMContentLoaded", () =>
                 // locationResults.style.display = "none";
             }, 200);
         });
-
-        // TODO: handle saving
         citySpan.addEventListener("keydown", async (e) =>
         {
+            // TODO: handle saving
             if (e.key === "Enter")
             {
                 e.preventDefault();
@@ -130,21 +106,15 @@ document.addEventListener("DOMContentLoaded", () =>
                                 const postCode = data.address.postcode.split(" ")[0];
                                 const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value };
 
-                                chrome.storage.sync.set({ location, parameters }, () =>
-                                {
-                                    if (chrome.runtime.lastError)
-                                    {
-                                        console.error("❌ Failed to save:", chrome.runtime.lastError);
-                                    }
-                                    else
-                                    {
-                                        console.log("✅ Saved parameters successfully!");
-                                    }
+                                utils.saveToStorage({
+                                    location: location,
+                                    parameters: parameters
                                 });
 
                                 locationResults.style.display = "none";
 
                                 const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, place.lat, place.lon, methodSelect.value);
+                                utils.saveToStorage("prayerTimes", prayerTimes);
                                 utils.displayTimes(prayerTimes);
                             });
 
@@ -168,26 +138,3 @@ document.addEventListener("DOMContentLoaded", () =>
         });
     });
 });
-
-function getTimeDifference(startTime, endTime)
-{
-    // Convert HH:MM to total minutes
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-
-    const startTotal = startH * 60 + startM;
-    const endTotal = endH * 60 + endM;
-
-    let diff = endTotal - startTotal;
-
-    // If the difference is negative, assume it's the next day
-    if (diff < 0) diff += 24 * 60;
-
-    const diffH = Math.floor(diff / 60);
-    const diffM = diff % 60;
-
-    // Pad with leading zero if needed
-    const pad = n => n.toString().padStart(2, '0');
-
-    return `${pad(diffH)}: ${pad(diffM)}`;
-}

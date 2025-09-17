@@ -60,19 +60,6 @@ export async function getPrayerTimes(countryCode, postCode, latitude, longitude,
                 times.Isha
             ]
         })).filter(entry => entry.date >= todayStr); // keep only today and future;
-
-        chrome.storage.sync.set({ prayerTimes }, () =>
-        {
-            if (chrome.runtime.lastError)
-            {
-                console.error("❌ Failed to save:", chrome.runtime.lastError);
-            }
-            else
-            {
-                console.log("✅ Saved prayer times successfully!");
-            }
-        });
-
         return prayerTimes;
     }
     catch (err)
@@ -145,4 +132,61 @@ export function getCurrentTime()
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     return `${hours}: ${minutes}`;
+}
+
+export function saveToStorage(keyOrObject, value)
+{
+    return new Promise((resolve, reject) =>
+    {
+        let data;
+
+        if (typeof keyOrObject === "object" && keyOrObject !== null)
+        {
+            // Case: multiple key-value pairs
+            data = keyOrObject;
+        }
+        else
+        {
+            // Case: single key-value pair
+            data = { [keyOrObject]: value };
+        }
+
+        chrome.storage.sync.set(data, () =>
+        {
+            if (chrome.runtime.lastError)
+            {
+                console.error("❌ Failed to save:", chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+            }
+            else
+            {
+                const savedKeys = Object.keys(data);
+                console.log(`✅ Saved successfully: ${savedKeys.join(", ")}`);
+                resolve(data);
+            }
+        });
+    });
+}
+
+export function getTimeDifference(startTime, endTime)
+{
+    // Convert HH:MM to total minutes
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    let diff = endTotal - startTotal;
+
+    // If the difference is negative, assume it's the next day
+    if (diff < 0) diff += 24 * 60;
+
+    const diffH = Math.floor(diff / 60);
+    const diffM = diff % 60;
+
+    // Pad with leading zero if needed
+    const pad = n => n.toString().padStart(2, '0');
+
+    return `${pad(diffH)}: ${pad(diffM)}`;
 }
