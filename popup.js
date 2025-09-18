@@ -18,7 +18,9 @@ document.addEventListener("DOMContentLoaded", async () =>
         10: "Egyptian General Authority of Survey (Bis)",
         11: "UOIF - Union Des Organisations Islamiques De France",
         12: "Sistem Informasi Hisab Rukyat Indonesia",
-        13: "Diyanet İşleri Başkanlığı"
+        13: "Diyanet İşleri Başkanlığı",
+        14: "Germany Custom",
+        15: "Russia Custom",
     };
 
     const methodSelect = document.querySelector(".test-method-select");
@@ -40,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () =>
             methodSpan.textContent = methods[id];
             methodsList.style.display = "none";
 
-            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state, parameters.city);
+            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state, parameters.city);
             utils.saveToStorage("prayerTimes", prayerTimes);
             utils.displayTimes(prayerTimes);
         });
@@ -136,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () =>
                                 parameters: parameters
                             });
 
-                            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state || place.address.province, parameters.city);
+                            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state || place.address.province, parameters.city);
                             utils.saveToStorage("prayerTimes", prayerTimes);
                             utils.displayTimes(prayerTimes);
 

@@ -1,6 +1,7 @@
 :root
 {
     --default-border-radius: 6px;
+    --default-vertical-padding: 6px;
 }
 
 html,
@@ -34,14 +35,14 @@ body
 .grid-container
 {
     display: grid;
-    gap: 8px;
+    gap: var(--default-vertical-padding);
     width: 100%;
-    padding: 8px 0 8px 0;
+    padding: var(--default-vertical-padding) 0 var(--default-vertical-padding) 0;
 }
 
 .grid-container>div
 {
-    margin: 0 8px 0 8px;
+    margin: 0 var(--default-vertical-padding) 0 var(--default-vertical-padding);
 }
 
 .location
@@ -69,8 +70,11 @@ body
 {
     background-color: #f3f4f6;
     border-radius: var(--default-border-radius);
-    padding: 12px 86px 12px 86px;
+    padding: var(--default-vertical-padding) 60px var(--default-vertical-padding) 60px;
     text-align: center;
+    display: flex;
+    gap: 16px;
+    align-items: center;
 }
 
 .prayer:nth-of-type(4)
@@ -78,10 +82,20 @@ body
     pointer-events: none;
 }
 
-.prayer span
+.prayer>div
+{
+    flex: 1;
+}
+
+.prayer>div>span
 {
     display: block;
     /* TODO: make this optional */
+}
+
+.time-adjust
+{
+    font-weight: bold;
 }
 
 .prayer-name
@@ -115,39 +129,24 @@ body
     filter: brightness(.9);
 }
 
-/* --- Custom Select Wrapper --- */
 .custom-select
 {
     display: flex;
     justify-content: center;
-    /* position: relative; */
-    /* width: 200px; */
-    /* adjust width */
 }
 
 .custom-select select
 {
-    /* appearance: none; */
-    /* remove default arrow */
-    /* -webkit-appearance: none;
-    -moz-appearance: none; */
-    /* width: 100%; */
-    /* padding: 8px 32px 8px 32px; */
-    /* border: 1px solid #d1d5db; */
-    /* border-radius: 6px; */
     background-color: #f3f4f6;
     color: #374151;
     width: 100%;
     text-align: center;
-    padding: 8px;
+    padding: var(--default-vertical-padding);
     font-size: xx-small;
-    /* font-size: 16px; */
-    /* font-weight: 500; */
     font-weight: bold;
     cursor: pointer;
     border: none;
     outline: none;
-    /* margin: 8px; */
 }
 
 .custom-select select:focus
@@ -171,7 +170,7 @@ body
 
 .location-results div
 {
-    padding: 8px;
+    padding: var(--default-vertical-padding);
     border-bottom: 1px solid #eee;
     cursor: pointer;
 }
@@ -184,7 +183,7 @@ body
 .test-method-select
 {
     text-align: center;
-    padding: 12px 4px 12px 4px;
+    padding: var(--default-vertical-padding) 4px var(--default-vertical-padding) 4px;
     font-size: x-small;
     background-color: #f3f4f6;
     border-radius: var(--default-border-radius);
@@ -212,7 +211,7 @@ body
 
 .methods>div
 {
-    padding: 8px;
+    padding: var(--default-vertical-padding);
     border-bottom: 1px solid #eee;
 }
 

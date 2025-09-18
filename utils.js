@@ -2,7 +2,7 @@ import { countryMap } from "./countryMap.js";
 
 const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
-export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, state = null, city = null)
+export async function fetchPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, state = null, city = null)
 {
     let prayerTimes = null;
     if (methodId == 13)
@@ -53,7 +53,6 @@ export async function getPrayerTimes(countryCode = null, postCode = null, latitu
     // fallback to the other API
     try
     {
-        console.log(`countryCode=${countryCode}, postCode=${postCode}, latitude=${latitude}, longitude=${longitude}, methodId=${methodId}`);
         const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${postCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
@@ -99,6 +98,23 @@ export function displayTimes(prayerTimes)
         {
             div = document.createElement("div");
             div.className = "prayer";
+            div.addEventListener("click", () =>
+            {
+                div.classList.toggle("prayed");
+            });
+
+            const leftDiv = document.createElement("div");
+            const leftSpan = document.createElement("span");
+            leftSpan.textContent = "-";
+            leftSpan.className = "time-adjust";
+
+            const prayerContainer = document.createElement("div");
+            prayerContainer.className = "prayer-container";
+
+            const rightDiv = document.createElement("div");
+            const rightSpan = document.createElement("span");
+            rightSpan.textContent = "+";
+            rightSpan.className = "time-adjust";
 
             const nameSpan = document.createElement("span");
             nameSpan.className = "prayer-name";
@@ -107,15 +123,13 @@ export function displayTimes(prayerTimes)
             const timeSpan = document.createElement("span");
             timeSpan.className = "prayer-time";
 
-            div.appendChild(nameSpan);
-            div.appendChild(timeSpan);
-
-            // Add toggle listener once
-            div.addEventListener("click", () =>
-            {
-                div.classList.toggle("prayed");
-            });
-
+            leftDiv.appendChild(leftSpan);
+            prayerContainer.appendChild(nameSpan);
+            prayerContainer.appendChild(timeSpan);
+            rightDiv.appendChild(rightSpan);
+            div.appendChild(leftDiv);
+            div.appendChild(prayerContainer);
+            div.appendChild(rightDiv);
             container.appendChild(div);
         }
 
