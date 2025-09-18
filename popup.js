@@ -1,145 +1,184 @@
 import * as utils from "./utils.js";
 
-document.addEventListener("DOMContentLoaded", () =>
+document.addEventListener("DOMContentLoaded", async () =>
 {
-    chrome.storage.sync.get(["parameters", "prayerTimes"], async (storage) =>
+    const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
+    const { parameters, prayerTimes } = storage;
+
+    const methods = {
+        0: "Jafari - Ithna Ashari",
+        1: "Karachi - University of Islamic Sciences",
+        2: "ISNA - Islamic Society of North America",
+        3: "MWL - Muslim World League",
+        4: "Mecca - Umm al-Qura",
+        5: "Egyptian General Authority of Survey",
+        7: "University of Tehran - Institute of Geophysics",
+        8: "Algerian Minister of Religious Affairs and Wakfs",
+        9: "Gulf 90 Minutes Fixed Isha",
+        10: "Egyptian General Authority of Survey (Bis)",
+        11: "UOIF - Union Des Organisations Islamiques De France",
+        12: "Sistem Informasi Hisab Rukyat Indonesia",
+        13: "Diyanet İşleri Başkanlığı"
+    };
+
+    const methodSelect = document.querySelector(".test-method-select");
+    const methodSpan = document.querySelector(".test-method");
+    methodSpan.textContent = methods[parameters.methodId];
+
+    const methodsList = document.querySelector(".methods");
+    Object.entries(methods).forEach(([id, name]) =>
     {
-        const { parameters, prayerTimes } = storage;
+        const option = document.createElement("div");
+        option.textContent = name;
 
-        // Prayer time calculation method select
-        const methodSelect = document.querySelector("#method-select");
-        methodSelect.value = parameters.methodId;
-        methodSelect.addEventListener("change", async () =>
+        // Save selected method, recalculate prayer times and update display
+        option.addEventListener("click", async () =>
         {
-            chrome.storage.sync.get(["parameters"], async (storage) =>
-            {
-                if (chrome.runtime.lastError)
-                {
-                    // TODO: Normalize error handling throughout or function
-                    console.error("❌ Failed to get storage:", chrome.runtime.lastError);
-                    return;
-                }
+            const storage = await utils.getFromStorage(["parameters"]);
+            let { countryCode, postCode, latitude, longitude, methodId, country, city } = storage.parameters;
+            methodId = id;
 
-                let { countryCode, postCode, latitude, longitude, methodId, country, city } = storage.parameters;
-                methodId = methodSelect.value;
+            const parameters = { countryCode, postCode, latitude, longitude, methodId, country, city };
+            utils.saveToStorage("parameters", parameters);
+            methodSpan.textContent = methods[id];
+            methodsList.style.display = "none";
 
-                const parameters = { countryCode, postCode, latitude, longitude, methodId, country, city };
-                utils.saveToStorage("parameters", parameters);
+            if (!countryCode || !postCode || !latitude || !longitude) return;
 
-                if (!countryCode || !postCode || !latitude || !longitude) return;
-
-                const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodSelect.value, country, city);
-                utils.saveToStorage("prayerTimes", prayerTimes);
-                utils.displayTimes(prayerTimes);
-            });
-        });
-
-        if (prayerTimes)
-        {
+            const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodId, country, city);
+            utils.saveToStorage("prayerTimes", prayerTimes);
             utils.displayTimes(prayerTimes);
-        }
-
-        const locationResults = document.createElement("div");
-        locationResults.className = "location-results";
-        document.body.appendChild(locationResults);
-
-        const citySpan = document.querySelector("#city");
-        if (parameters.city && parameters.country)
-        {
-            citySpan.textContent = `${parameters.city}, ${parameters.country}`;
-        }
-        else
-        {
-            citySpan.textContent = "Click to set location";
-        }
-        citySpan.addEventListener("click", () =>
-        {
-            citySpan.contentEditable = true;
-            citySpan.focus();
-            document.execCommand('selectAll', false, null);
         });
-        citySpan.addEventListener("blur", () =>
-        {
-            // delay hiding results to allow click
-            setTimeout(() =>
-            {
-                citySpan.contentEditable = false;
-                // locationResults.style.display = "none";
-            }, 200);
-        });
-        citySpan.addEventListener("keydown", async (e) =>
-        {
-            // TODO: handle saving
-            if (e.key === "Enter")
-            {
-                e.preventDefault();
-                const query = citySpan.textContent.trim();
-                if (!query) return;
 
-                // Nominatim API request
-                try
+        methodsList.appendChild(option);
+    });
+
+    methodSelect.addEventListener("click", () =>
+    {
+        methodsList.style.display = methodsList.style.display === "block" ? "none" : "block";
+    });
+
+    if (prayerTimes)
+    {
+        utils.displayTimes(prayerTimes);
+    }
+
+    const locationResults = document.createElement("div");
+    locationResults.className = "location-results";
+    document.body.appendChild(locationResults);
+
+    const citySpan = document.querySelector("#city");
+    if (parameters.city && parameters.country)
+    {
+        citySpan.textContent = `${parameters.city}, ${parameters.country}`;
+    }
+    else
+    {
+        citySpan.textContent = "Click to set location";
+    }
+    citySpan.addEventListener("click", () =>
+    {
+        citySpan.contentEditable = true;
+        citySpan.focus();
+        document.execCommand('selectAll', false, null);
+    });
+    citySpan.addEventListener("blur", () =>
+    {
+        // delay hiding results to allow click
+        setTimeout(() =>
+        {
+            citySpan.contentEditable = false;
+            // locationResults.style.display = "none";
+        }, 200);
+    });
+    citySpan.addEventListener("keydown", async (e) =>
+    {
+        // TODO: handle saving
+        if (e.key === "Enter")
+        {
+            e.preventDefault();
+            const query = citySpan.textContent.trim();
+            if (!query) return;
+
+            // Nominatim API request
+            try
+            {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
+                    headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
+                });
+                const data = await res.json();
+
+                // Show results
+                locationResults.innerHTML = "";
+                if (data.length === 0)
                 {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
-                        headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
-                    });
-                    const data = await res.json();
+                    const noRes = document.createElement("div");
+                    noRes.textContent = "No results found";
+                    locationResults.appendChild(noRes);
+                }
+                else
+                {
+                    data.forEach(place =>
+                    {
+                        const option = document.createElement("div");
+                        option.textContent = place.display_name;
 
-                    // Show results
-                    locationResults.innerHTML = "";
-                    if (data.length === 0)
-                    {
-                        const noRes = document.createElement("div");
-                        noRes.textContent = "No results found";
-                        locationResults.appendChild(noRes);
-                    }
-                    else
-                    {
-                        data.forEach(place =>
+                        option.addEventListener("click", async () =>
                         {
-                            const option = document.createElement("div");
-                            option.textContent = place.display_name;
+                            // Save selected location
+                            const location = `${place.address.city || place.address.town}, ${place.address.country}`;
+                            citySpan.textContent = location;
 
-                            option.addEventListener("click", async () =>
-                            {
-                                // Save selected location
-                                const location = `${place.address.city || place.address.town}, ${place.address.country}`;
-                                citySpan.textContent = location;
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
+                                headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
+                            });
+                            const data = await res.json();
 
-                                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
-                                    headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
-                                });
-                                const data = await res.json();
+                            const countryCode = data.address.country_code;
+                            const postCode = data.address.postcode.split(" ")[0];
+                            const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value, country: place.address.country, city: place.address.city || place.address.town };
 
-                                const countryCode = data.address.country_code;
-                                const postCode = data.address.postcode.split(" ")[0];
-                                const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value, country: place.address.country, city: place.address.city || place.address.town };
-
-                                utils.saveToStorage({
-                                    parameters: parameters
-                                });
-
-                                locationResults.style.display = "none";
-
-                                const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, methodSelect.value, parameters.country, parameters.city);
-                                utils.saveToStorage("prayerTimes", prayerTimes);
-                                utils.displayTimes(prayerTimes);
+                            utils.saveToStorage({
+                                parameters: parameters
                             });
 
-                            locationResults.appendChild(option);
+                            locationResults.style.display = "none";
+
+                            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, methodSelect.value, parameters.country, parameters.city);
+                            utils.saveToStorage("prayerTimes", prayerTimes);
+                            utils.displayTimes(prayerTimes);
                         });
-                    }
 
-                    // Position results under the span
-                    const rect = citySpan.getBoundingClientRect();
-                    locationResults.style.top = `${rect.bottom + window.scrollY}px`;
-                    locationResults.style.display = "block";
+                        locationResults.appendChild(option);
+                    });
+                }
 
-                }
-                catch (err)
-                {
-                    console.error(err);
-                }
+                // Position results under the span
+                const rect = citySpan.getBoundingClientRect();
+                locationResults.style.top = `${rect.bottom + window.scrollY}px`;
+                locationResults.style.display = "block";
+
             }
-        });
+            catch (err)
+            {
+                console.error(err);
+            }
+        }
+    });
+
+    document.addEventListener("click", (event) =>
+    {
+        // Close prayer calculation method dropdown if clicked outside
+        if (!methodsList.contains(event.target) && !methodSelect.contains(event.target))
+        {
+            methodsList.style.display = "none";
+        }
+
+        // Close location results if clicked outside
+        if (!locationResults.contains(event.target) && event.target !== citySpan)
+        {
+            locationResults.style.display = "none";
+            citySpan.contentEditable = false;
+        }
     });
 });

@@ -39,7 +39,7 @@ body
     padding: 8px 0 8px 0;
 }
 
-.grid-container div
+.grid-container>div
 {
     margin: 0 8px 0 8px;
 }
@@ -110,7 +110,7 @@ body
 #current-prayer:hover
 {
     cursor: pointer;
-    filter: brightness(0.9);
+    filter: brightness(.9);
 }
 
 /* --- Custom Select Wrapper --- */
@@ -177,4 +177,58 @@ body
 .location-results div:last-child
 {
     border-bottom: none;
+}
+
+.test-method-select
+{
+    text-align: center;
+    padding: 12px 4px 12px 4px;
+    font-size: x-small;
+    background-color: #f3f4f6;
+    border-radius: var(--default-border-radius);
+}
+
+.test-method-select:hover
+{
+    cursor: pointer;
+    filter: brightness(.9);
+}
+
+.methods
+{
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    display: none;
+    text-align: center;
+    border-radius: var(--default-border-radius);
+    color: #6b7280;
+    font-size: x-small;
+    width: 100%;
+}
+
+.methods>div
+{
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.methods>div:last-child
+{
+    border-bottom: none;
+}
+
+.methods>div:hover
+{
+    cursor: pointer;
+    background-color: #f3f4f6;
+}
+
+.dropdown-container
+{
+    position: relative;
+    /* anchor point for absolute children */
+    display: inline-block;
+    /* keeps it tight around button */
 }

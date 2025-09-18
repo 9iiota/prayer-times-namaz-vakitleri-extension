@@ -1,3 +1,5 @@
+import * as utils from "./utils.js";
+
 const DEFAULT_STORAGE_VALUES =
 {
     parameters:
@@ -21,7 +23,7 @@ async function populateStorage()
     try
     {
         const keys = Object.keys(DEFAULT_STORAGE_VALUES);
-        const storage = await chrome.storage.sync.get(keys);
+        const storage = await utils.getFromStorage(keys);
 
         const toSet = {};
         for (const [key, defaultValue] of Object.entries(DEFAULT_STORAGE_VALUES))

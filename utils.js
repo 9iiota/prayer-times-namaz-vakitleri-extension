@@ -2,44 +2,6 @@ import { countryMap } from "./countryMap.js";
 
 const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
-export async function getPublicIP()
-{
-    try
-    {
-        const res = await fetch('https://api.ipify.org?format=json');
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-        return json.ip;
-    }
-    catch (err)
-    {
-        console.error('IP fetch error', err);
-        return null;
-    }
-}
-
-export async function getLocationData(ip)
-{
-    try
-    {
-        const res = await fetch(`https://ipwhois.app/json/${ip}`);
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-        const locationData = {
-            latitude: json.latitude,
-            longitude: json.longitude,
-            country: json.country,
-            city: json.city
-        }
-        return locationData;
-    }
-    catch (err)
-    {
-        console.error('IP fetch error', err);
-        return null;
-    }
-}
-
 export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, city = null)
 {
     if (methodId == 13)
@@ -183,6 +145,25 @@ export function getCurrentTime()
     return `${hours}:${minutes}`;
 }
 
+export function getFromStorage(keys)
+{
+    return new Promise((resolve, reject) =>
+    {
+        chrome.storage.sync.get(keys, (storage) =>
+        {
+            if (chrome.runtime.lastError)
+            {
+                console.error("❌ Failed to get storage:", chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+            }
+            else
+            {
+                resolve(storage);
+            }
+        });
+    });
+}
+
 export function saveToStorage(keyOrObject, value)
 {
     return new Promise((resolve, reject) =>
@@ -238,11 +219,6 @@ export function getTimeDifference(startTime, endTime)
     const pad = n => n.toString().padStart(2, '0');
 
     return `${pad(diffH)}: ${pad(diffM)}`;
-}
-
-export function resolveCountry(code)
-{
-    return countryMap[code] || null;
 }
 
 export async function retrieveCityId(countryId, city)
