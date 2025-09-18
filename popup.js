@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", async () =>
     const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
     let { parameters, prayerTimes } = storage;
 
-    const methods = {
+    const prayerCalculationMethodIds = {
         0: "Jafari - Ithna Ashari",
         1: "Karachi - University of Islamic Sciences",
         2: "ISNA - Islamic Society of North America",
@@ -23,13 +23,23 @@ document.addEventListener("DOMContentLoaded", async () =>
         15: "Russia Custom",
     };
 
-    const methodSelect = document.querySelector(".test-method-select");
-    const methodSpan = document.querySelector(".test-method");
-    console.log(parameters);
-    methodSpan.textContent = methods[parameters.methodId];
+    const asrJurisdictionMethod = {
+        0: "Shafi, Hanbali, Maliki",
+        1: "Hanafi",
+    };
 
     const methodsList = document.querySelector(".methods");
-    Object.entries(methods).forEach(([id, name]) =>
+    const methodSelect = document.querySelector(".test-method-select");
+    methodSelect.addEventListener("click", () =>
+    {
+        methodsList.style.display = methodsList.style.display === "block" ? "none" : "block";
+    });
+
+    const methodSpan = document.querySelector(".test-method");
+    methodSpan.textContent = prayerCalculationMethodIds[parameters.methodId];
+
+    // TODO change .methods to better name
+    Object.entries(prayerCalculationMethodIds).forEach(([id, name]) =>
     {
         const option = document.createElement("div");
         option.textContent = name;
@@ -39,10 +49,10 @@ document.addEventListener("DOMContentLoaded", async () =>
         {
             parameters.methodId = id;
             utils.saveToStorage("parameters", parameters);
-            methodSpan.textContent = methods[id];
+            methodSpan.textContent = prayerCalculationMethodIds[id];
             methodsList.style.display = "none";
 
-            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state, parameters.city);
+            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state, parameters.city);
             utils.saveToStorage("prayerTimes", prayerTimes);
             utils.displayTimes(prayerTimes);
         });
@@ -50,9 +60,37 @@ document.addEventListener("DOMContentLoaded", async () =>
         methodsList.appendChild(option);
     });
 
-    methodSelect.addEventListener("click", () =>
+    //////////////////////////////////////////////////
+
+    const methodsListAsr = document.querySelector(".methods-asr");
+    const methodSelectAsr = document.querySelector(".test-method-select-asr");
+    methodSelectAsr.addEventListener("click", () =>
     {
-        methodsList.style.display = methodsList.style.display === "block" ? "none" : "block";
+        methodsListAsr.style.display = methodsListAsr.style.display === "block" ? "none" : "block";
+    });
+
+    const asrSpan = document.querySelector(".test-asr");
+    asrSpan.textContent = asrJurisdictionMethod[parameters.asrMethodId];
+
+    Object.entries(asrJurisdictionMethod).forEach(([id, name]) =>
+    {
+        const option = document.createElement("div");
+        option.textContent = name;
+
+        // Save selected method, recalculate prayer times and update display
+        option.addEventListener("click", async () =>
+        {
+            parameters.asrMethodId = id;
+            utils.saveToStorage("parameters", parameters);
+            asrSpan.textContent = asrJurisdictionMethod[id];
+            methodsListAsr.style.display = "none";
+
+            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state, parameters.city);
+            utils.saveToStorage("prayerTimes", prayerTimes);
+            utils.displayTimes(prayerTimes);
+        });
+
+        methodsListAsr.appendChild(option);
     });
 
     if (prayerTimes)
@@ -132,13 +170,10 @@ document.addEventListener("DOMContentLoaded", async () =>
                             const data = await res.json();
 
                             const postCode = data.address.postcode.split(" ")[0];
-                            parameters = { countryCode: data.address.country_code, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
-                            console.log(parameters);
-                            utils.saveToStorage({
-                                parameters: parameters
-                            });
+                            parameters = { countryCode: data.address.country_code, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, asrMethodId: parameters.asrMethodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
+                            utils.saveToStorage("parameters", parameters);
 
-                            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state || place.address.province, parameters.city);
+                            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state || place.address.province, parameters.city);
                             utils.saveToStorage("prayerTimes", prayerTimes);
                             utils.displayTimes(prayerTimes);
 
@@ -167,6 +202,12 @@ document.addEventListener("DOMContentLoaded", async () =>
         if (!methodsList.contains(event.target) && !methodSelect.contains(event.target))
         {
             methodsList.style.display = "none";
+        }
+
+        // Close asr jurisdiction method dropdown if clicked outside
+        if (!methodsListAsr.contains(event.target) && !methodSelectAsr.contains(event.target))
+        {
+            methodsListAsr.style.display = "none";
         }
 
         // Close location results if clicked outside

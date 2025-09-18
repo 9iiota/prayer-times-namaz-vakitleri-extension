@@ -9,6 +9,7 @@ const DEFAULT_STORAGE_VALUES =
         latitude: null,
         longitude: null,
         methodId: 13,
+        asrMethodId: 0,
         country: null,
         state: null,
         city: null
