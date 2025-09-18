@@ -1,6 +1,6 @@
 :root
 {
-    --popup-width: 300px;
+    --default-border-radius: 6px;
 }
 
 html,
@@ -14,82 +14,167 @@ body
     display: flex;
     justify-content: center;
     align-items: center;
-    /* Let body size based on content */
-    width: var(--popup-width);
+
+    max-width: 800px;
+    max-height: 600px;
+
+    height: 556px;
+    width: 260px;
+}
+
+.popup-container
+{
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    /* width: 260px; */
     height: 100%;
 }
 
-.container
+.grid-container
 {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    /* gap: 0.2em; */
-    /* padding: 1em; */
-    min-width: 100vw;
-    /* width: 100vw; */
-    /* width: fit-content; */
-    /* Key: width depends on child content */
-    /* max-width: 90vw; */
-    /* Optional safety limit */
-    /* border: 1px solid #e0e0e0;
-    border-radius: 8px; */
-    /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); */
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 0 8px 0;
 }
 
-/* Shared prayer styles */
-.stacked
+.grid-container div
 {
-    width: 100%;
-
-    box-sizing: border-box;
-    text-align: center;
-    padding: 8px;
-    white-space: nowrap;
-    /* Prevent line breaks */
+    margin: 0 8px 0 8px;
 }
 
-/* Non-current prayers get borders */
-/* .stacked:not(#current-prayer)
+.location
 {
-    border: 2px solid #d3d3d3;
-    width: 100%;
-    Full width of the container
-} */
-
-.stacked span
-{
-    width: 100%;
     text-align: center;
-    box-sizing: border-box;
+}
+
+#city
+{
+    color: #374151;
+    font-weight: bold;
+    display: inline;
+    text-decoration: underline;
+}
+
+#city:hover
+{
+    cursor: pointer;
+    filter: brightness(1.9);
+}
+
+.prayer
+{
+    background-color: #f3f4f6;
+    border-radius: var(--default-border-radius);
+    padding: 12px 86px 12px 86px;
+    text-align: center;
+}
+
+.prayer:nth-of-type(4)
+{
+    pointer-events: none;
+}
+
+.prayer span
+{
     display: block;
-    /* font-weight: bold; */
-    color: #ffffff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 1);
+    /* TODO: make this optional */
 }
 
-/* Current prayer determines container width */
+.prayer-name
+{
+    color: #374151;
+    font-weight: bold;
+}
+
+.prayer-time
+{
+    color: #6b7280;
+}
+
 #current-prayer
 {
-    z-index: 1;
-    box-shadow:
-        0px 1px 5px rgba(0, 0, 0, .2),
-        0px -1px 5px rgba(0, 0, 0, .2);
-    font-weight: bold;
-    /* width: 90%; */
-    /* background-color: #d3d3d3;
-    border: 2px solid transparent;
-    transition: filter 0.3s ease, background-color 0.3s ease;
-    padding: 8px 128px 8px 128px;
-    width: auto;
-    */
-    /* Auto width */
-    /* min-width: max-content; */
-    /* Don't shrink below content */
+    /* background-color: #baffde; */
+    background-color: #ffbaba;
+    /* background-color: #baebff; */
+
+    /* transition: background-color 1s; */
+}
+
+#current-prayer.prayed
+{
+    background-color: rgb(100, 255, 177);
 }
 
 #current-prayer:hover
 {
     cursor: pointer;
     filter: brightness(0.9);
+}
+
+/* --- Custom Select Wrapper --- */
+.custom-select
+{
+    display: flex;
+    justify-content: center;
+    /* position: relative; */
+    /* width: 200px; */
+    /* adjust width */
+}
+
+.custom-select select
+{
+    /* appearance: none; */
+    /* remove default arrow */
+    /* -webkit-appearance: none;
+    -moz-appearance: none; */
+    /* width: 100%; */
+    /* padding: 8px 32px 8px 32px; */
+    /* border: 1px solid #d1d5db; */
+    /* border-radius: 6px; */
+    background-color: #f3f4f6;
+    color: #374151;
+    width: 100%;
+    text-align: center;
+    padding: 8px;
+    font-size: xx-small;
+    /* font-size: 16px; */
+    /* font-weight: 500; */
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    /* margin: 8px; */
+}
+
+.custom-select select:focus
+{
+    outline: none;
+    box-shadow: none;
+}
+
+.location-results
+{
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    display: none;
+    text-align: center;
+    margin: 0 8px 0 8px;
+    border-radius: var(--default-border-radius);
+    color: #6b7280;
+}
+
+.location-results div
+{
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.location-results div:last-child
+{
+    border-bottom: none;
 }

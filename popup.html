@@ -8,10 +8,33 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="popup-container">
+        <div class="grid-container">
+            <div class="custom-select">
+                <select id="method-select">
+                    <option value="0">Jafari - Ithna Ashari</option>
+                    <option value="1">Karachi - University of Islamic Sciences</option>
+                    <option value="2">ISNA - Islamic Society of North America</option>
+                    <option value="3">MWL - Muslim World League</option>
+                    <option value="4">Mecca - Umm al-Qura</option>
+                    <option value="5">Egyptian General Authority of Survey</option>
+                    <option value="7">University of Tehran - Institute of Geophysics</option>
+                    <option value="8">Algerian Minister of Religious Affairs and Wakfs</option>
+                    <option value="9">Gulf 90 Minutes Fixed Isha</option>
+                    <option value="10">Egyptian General Authority of Survey (Bis)</option>
+                    <option value="11">UOIF - Union Des Organisations Islamiques De France</option>
+                    <option value="12">Sistem Informasi Hisab Rukyat Indonesia</option>
+                    <option value="13">Diyanet İşleri Başkanlığı</option>
+                </select>
+            </div>
+            <div class="location">
+                <span id="city"></span>
+            </div>
+        </div>
     </div>
 
-    <script src="popup.js"></script>
+    <script src="libs/fuse.min.js"></script>
+    <script type="module" src="popup.js"></script>
 </body>
 
 </html>

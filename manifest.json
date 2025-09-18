@@ -10,15 +10,18 @@
         "storage"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
-    "content_scripts": [
-		{
-			"js": ["content.js"],
-			"matches": ["*://*.namazvakitleri.diyanet.gov.tr/*"]
-		}
-	],
     "host_permissions": [
-		"*://*.namazvakitleri.diyanet.gov.tr/*"
-	]
+		"*://*.namazvakitleri.diyanet.gov.tr/*",
+        "*://api.ipify.org/*",
+        "*://www.islamicfinder.us/index.php/api/*"
+	],
+    "web_accessible_resources": [
+        {
+            "resources": ["libs/fuse.min.js"],
+            "matches": ["<all_urls>"]
+        }
+    ]
 }

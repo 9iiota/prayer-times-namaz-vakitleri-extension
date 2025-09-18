@@ -1,0 +1,303 @@
+import { countryMap } from "./countryMap.js";
+
+const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+export async function getPublicIP()
+{
+    try
+    {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+        return json.ip;
+    }
+    catch (err)
+    {
+        console.error('IP fetch error', err);
+        return null;
+    }
+}
+
+export async function getLocationData(ip)
+{
+    try
+    {
+        const res = await fetch(`https://ipwhois.app/json/${ip}`);
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+        const locationData = {
+            latitude: json.latitude,
+            longitude: json.longitude,
+            country: json.country,
+            city: json.city
+        }
+        return locationData;
+    }
+    catch (err)
+    {
+        console.error('IP fetch error', err);
+        return null;
+    }
+}
+
+export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, city = null)
+{
+    if (methodId == 13)
+    {
+        try
+        {
+            const countryId = Object.keys(countryMap).find(key => countryMap[key] === country);
+            if (!countryId) throw new Error('Country not found in countryMap');
+
+            const cityId = await retrieveCityId(countryId, city);
+            if (!cityId) throw new Error('No cities found for country');
+
+            const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${cityId}`);
+            if (!res.ok) throw new Error('Network response not ok');
+            const htmlText = await res.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+
+            const prayerTimes = [];
+            const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
+            days.forEach(day =>
+            {
+                const children = day.children;
+
+                const dateStr = children[0].textContent.trim();
+                const [d, m, y] = dateStr.split(".");
+                const date = new Date(y, m - 1, d, 12); // Set to noon to avoid timezone issues
+
+                const timeTds = Array.from(children).slice(2);
+                const times = timeTds.map(cell => cell.textContent.trim());
+                const prayerTimesObj = {
+                    date: date.toISOString().split("T")[0],
+                    times: times
+                };
+
+                prayerTimes.push(prayerTimesObj);
+            });
+
+            return prayerTimes;
+        }
+        catch (err)
+        {
+            console.error('Prayer times fetch error', err);
+            return null;
+        }
+    }
+
+    try
+    {
+        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${postCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
+        if (!res.ok) throw new Error('Network response not ok');
+        const json = await res.json();
+
+        const today = new Date();
+        const todayStr = today.toISOString().split("T")[0]; // e.g. "2025-09-16"
+
+        const prayerTimes = Object.entries(json.results).map(([date, times]) => ({
+            date: date.replace(/-(\d)$/, "-0$1"), // ensure day has leading 0 (e.g. 2025-09-1 → 2025-09-01)
+            times: [
+                times.Fajr,
+                times.Duha,
+                times.Dhuhr,
+                times.Asr,
+                times.Maghrib,
+                times.Isha
+            ]
+        })).filter(entry => entry.date >= todayStr); // keep only today and future;
+
+        return prayerTimes;
+    }
+    catch (err)
+    {
+        console.error('Prayer times fetch error', err);
+        return null;
+    }
+}
+
+export function displayTimes(prayerTimes)
+{
+    const container = document.querySelector(".grid-container");
+    const today = new Date().toISOString().split("T")[0];
+    const todayTimes = prayerTimes.find(times => times.date === today);
+    if (!todayTimes) return;
+
+    // Find current prayer index
+    const now = getCurrentTime();
+    const passedTimes = todayTimes.times.filter(time => time <= now);
+    const currentPrayerIndex = todayTimes.times.indexOf(passedTimes.at(-1));
+
+    // Clear old "current-prayer" marker
+    document.querySelectorAll("#current-prayer").forEach(el => el.removeAttribute("id"));
+
+    PRAYER_NAMES.forEach((name, i) =>
+    {
+        // console.log(name, i);
+        let div = container.querySelectorAll(".prayer")[i];
+
+        // Create element if missing
+        if (!div)
+        {
+            div = document.createElement("div");
+            div.className = "prayer";
+
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "prayer-name";
+            nameSpan.textContent = name;
+
+            const timeSpan = document.createElement("span");
+            timeSpan.className = "prayer-time";
+
+            div.appendChild(nameSpan);
+            div.appendChild(timeSpan);
+
+            // Add toggle listener once
+            div.addEventListener("click", () =>
+            {
+                div.classList.toggle("prayed");
+            });
+
+            container.appendChild(div);
+        }
+
+        // Update time
+        const timeSpan = div.querySelector(".prayer-time");
+        timeSpan.textContent = todayTimes.times[i];
+
+        // Highlight current prayer
+        if (i === currentPrayerIndex)
+        {
+            div.id = "current-prayer";
+        }
+    });
+}
+
+export function getCurrentTime()
+{
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+export function saveToStorage(keyOrObject, value)
+{
+    return new Promise((resolve, reject) =>
+    {
+        let data;
+
+        if (typeof keyOrObject === "object" && keyOrObject !== null)
+        {
+            // Case: multiple key-value pairs
+            data = keyOrObject;
+        }
+        else
+        {
+            // Case: single key-value pair
+            data = { [keyOrObject]: value };
+        }
+
+        chrome.storage.sync.set(data, () =>
+        {
+            if (chrome.runtime.lastError)
+            {
+                console.error("❌ Failed to save:", chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+            }
+            else
+            {
+                const savedKeys = Object.keys(data);
+                console.log(`✅ Saved successfully: ${savedKeys.join(", ")}`);
+                resolve(data);
+            }
+        });
+    });
+}
+
+export function getTimeDifference(startTime, endTime)
+{
+    // Convert HH:MM to total minutes
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    let diff = endTotal - startTotal;
+
+    // If the difference is negative, assume it's the next day
+    if (diff < 0) diff += 24 * 60;
+
+    const diffH = Math.floor(diff / 60);
+    const diffM = diff % 60;
+
+    // Pad with leading zero if needed
+    const pad = n => n.toString().padStart(2, '0');
+
+    return `${pad(diffH)}: ${pad(diffM)}`;
+}
+
+export function resolveCountry(code)
+{
+    return countryMap[code] || null;
+}
+
+export async function retrieveCityId(countryId, city)
+{
+    // Fetch the country/state list
+    const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${countryId}&Culture=en-US`);
+    if (!res.ok) throw new Error('Network response not ok');
+    const json = await res.json();
+
+    let citiesList = [];
+
+    if (json.HasStateList)
+    {
+        // Fallback to StateList if StateRegionList is null
+        const states = json.StateList.map(item =>
+        {
+            const values = Object.values(item);
+            return { name: values[2]?.trim(), id: values[3] };
+        }).filter(item => item.name && item.id);
+
+        const bestStateMatch = fuzzySearch(city, states)?.[0];
+        if (!bestStateMatch) return null;
+
+        const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${countryId}&StateId=${bestStateMatch.id}&Culture=en-US`);
+        if (!stateRes.ok) throw new Error('Network response not ok');
+        const stateJson = await stateRes.json();
+        citiesList = stateJson.StateRegionList || [];
+    }
+    else
+    {
+        citiesList = json.StateRegionList;
+    }
+
+    // Map cities to simplified objects
+    const cities = citiesList.map(item =>
+    {
+        const values = Object.values(item);
+        return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
+    }).filter(item => item.name && item.id);
+
+    // Fuzzy search for best city match
+    const bestCityMatch = fuzzySearch(city, cities);
+    return bestCityMatch?.id || null;
+}
+
+export function fuzzySearch(query, options, threshold = 0.3)
+{
+    if (!query || !options || options.length === 0) return null;
+
+    const fuse = new Fuse(options, {
+        keys: ["name"],
+        threshold: threshold,
+        includeScore: true,
+    });
+
+    const results = fuse.search(query, { limit: 1 });
+    return results.length > 0 ? results[0].item : null;
+}
