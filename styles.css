@@ -1,3 +1,8 @@
+:root
+{
+    --default-border-radius: 6px;
+}
+
 html,
 body
 {
@@ -34,7 +39,7 @@ body
     padding: 8px 0 8px 0;
 }
 
-.grid-container>div
+.grid-container div
 {
     margin: 0 8px 0 8px;
 }
@@ -61,9 +66,14 @@ body
 .prayer
 {
     background-color: #f3f4f6;
-    border-radius: 6px;
+    border-radius: var(--default-border-radius);
     padding: 12px 86px 12px 86px;
     text-align: center;
+}
+
+.prayer:nth-of-type(4)
+{
+    pointer-events: none;
 }
 
 .prayer span
@@ -151,4 +161,20 @@ body
     border: 1px solid #ccc;
     z-index: 1000;
     display: none;
+    text-align: center;
+    margin: 0 8px 0 8px;
+    border-radius: var(--default-border-radius);
+    color: #6b7280;
+}
+
+.location-results div
+{
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.location-results div:last-child
+{
+    border-bottom: none;
 }

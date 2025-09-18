@@ -98,8 +98,6 @@ document.addEventListener("DOMContentLoaded", () =>
                         {
                             const option = document.createElement("div");
                             option.textContent = place.display_name;
-                            option.style.padding = "4px";
-                            option.style.cursor = "pointer";
 
                             option.addEventListener("click", async () =>
                             {
@@ -134,8 +132,6 @@ document.addEventListener("DOMContentLoaded", () =>
                     // Position results under the span
                     const rect = citySpan.getBoundingClientRect();
                     locationResults.style.top = `${rect.bottom + window.scrollY}px`;
-                    locationResults.style.left = `${rect.left + window.scrollX}px`;
-                    locationResults.style.width = `${rect.width}px`;
                     locationResults.style.display = "block";
 
                 }

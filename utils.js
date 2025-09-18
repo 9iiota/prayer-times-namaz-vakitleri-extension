@@ -48,11 +48,9 @@ export async function getPrayerTimes(countryCode = null, postCode = null, latitu
         {
             const countryId = Object.keys(countryMap).find(key => countryMap[key] === country);
             if (!countryId) throw new Error('Country not found in countryMap');
-            console.log(`Country ID: ${countryId}`);
 
             const cityId = await retrieveCityId(countryId, city);
-            if (cityId.length === 0) throw new Error('No cities found for country');
-            console.log(`City ID: ${cityId}`);
+            if (!cityId) throw new Error('No cities found for country');
 
             const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${cityId}`);
             if (!res.ok) throw new Error('Network response not ok');
@@ -256,7 +254,7 @@ export async function retrieveCityId(countryId, city)
 
     let citiesList = [];
 
-    if (!json.StateRegionList || json.StateRegionList.length === 0)
+    if (json.HasStateList)
     {
         // Fallback to StateList if StateRegionList is null
         const states = json.StateList.map(item =>
@@ -272,7 +270,8 @@ export async function retrieveCityId(countryId, city)
         if (!stateRes.ok) throw new Error('Network response not ok');
         const stateJson = await stateRes.json();
         citiesList = stateJson.StateRegionList || [];
-    } else
+    }
+    else
     {
         citiesList = json.StateRegionList;
     }
@@ -281,11 +280,11 @@ export async function retrieveCityId(countryId, city)
     const cities = citiesList.map(item =>
     {
         const values = Object.values(item);
-        return { name: values[2]?.trim(), id: values[3] };
+        return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
     }).filter(item => item.name && item.id);
 
     // Fuzzy search for best city match
-    const bestCityMatch = fuzzySearch(city, cities)?.[0];
+    const bestCityMatch = fuzzySearch(city, cities);
     return bestCityMatch?.id || null;
 }
 
