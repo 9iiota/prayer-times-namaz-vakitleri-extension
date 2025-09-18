@@ -2,8 +2,9 @@ import { countryMap } from "./countryMap.js";
 
 const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
-export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, city = null)
+export async function getPrayerTimes(countryCode = null, postCode = null, latitude = null, longitude = null, methodId = 13, country = null, state = null, city = null)
 {
+    let prayerTimes = null;
     if (methodId == 13)
     {
         try
@@ -21,61 +22,54 @@ export async function getPrayerTimes(countryCode = null, postCode = null, latitu
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, "text/html");
 
-            const prayerTimes = [];
+            prayerTimes = [];
             const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
             days.forEach(day =>
             {
                 const children = day.children;
-
                 const dateStr = children[0].textContent.trim();
                 const [d, m, y] = dateStr.split(".");
-                const date = new Date(y, m - 1, d, 12); // Set to noon to avoid timezone issues
+                const date = new Date(y, m - 1, d, 12);
 
                 const timeTds = Array.from(children).slice(2);
                 const times = timeTds.map(cell => cell.textContent.trim());
-                const prayerTimesObj = {
-                    date: date.toISOString().split("T")[0],
-                    times: times
-                };
 
-                prayerTimes.push(prayerTimesObj);
+                prayerTimes.push({
+                    date: date.toISOString().split("T")[0],
+                    times
+                });
             });
 
-            return prayerTimes;
+            // if everything worked, return immediately
+            if (prayerTimes.length > 0) return prayerTimes;
         }
         catch (err)
         {
-            console.error('Prayer times fetch error', err);
-            return null;
+            console.log('Method 13 failed, falling back to next method');
+            // do not return; continue to fallback
         }
     }
 
+    // fallback to the other API
     try
     {
+        console.log(`countryCode=${countryCode}, postCode=${postCode}, latitude=${latitude}, longitude=${longitude}, methodId=${methodId}`);
         const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${postCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
 
-        const today = new Date();
-        const todayStr = today.toISOString().split("T")[0]; // e.g. "2025-09-16"
+        const todayStr = new Date().toISOString().split("T")[0];
 
-        const prayerTimes = Object.entries(json.results).map(([date, times]) => ({
-            date: date.replace(/-(\d)$/, "-0$1"), // ensure day has leading 0 (e.g. 2025-09-1 → 2025-09-01)
-            times: [
-                times.Fajr,
-                times.Duha,
-                times.Dhuhr,
-                times.Asr,
-                times.Maghrib,
-                times.Isha
-            ]
-        })).filter(entry => entry.date >= todayStr); // keep only today and future;
+        prayerTimes = Object.entries(json.results).map(([date, times]) => ({
+            date: date.replace(/-(\d)$/, "-0$1"),
+            times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
+        })).filter(entry => entry.date >= todayStr);
 
-        return prayerTimes;
+        return prayerTimes.length > 0 ? prayerTimes : null;
     }
     catch (err)
     {
-        console.error('Prayer times fetch error', err);
+        console.error('Fallback API failed', err);
         return null;
     }
 }

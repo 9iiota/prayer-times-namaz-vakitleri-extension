@@ -10,6 +10,7 @@ const DEFAULT_STORAGE_VALUES =
         longitude: null,
         methodId: 13,
         country: null,
+        state: null,
         city: null
     },
 };

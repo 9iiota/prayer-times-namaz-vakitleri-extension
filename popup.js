@@ -3,7 +3,7 @@ import * as utils from "./utils.js";
 document.addEventListener("DOMContentLoaded", async () =>
 {
     const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
-    const { parameters, prayerTimes } = storage;
+    let { parameters, prayerTimes } = storage;
 
     const methods = {
         0: "Jafari - Ithna Ashari",
@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", async () =>
 
     const methodSelect = document.querySelector(".test-method-select");
     const methodSpan = document.querySelector(".test-method");
+    console.log(parameters);
     methodSpan.textContent = methods[parameters.methodId];
 
     const methodsList = document.querySelector(".methods");
@@ -34,18 +35,12 @@ document.addEventListener("DOMContentLoaded", async () =>
         // Save selected method, recalculate prayer times and update display
         option.addEventListener("click", async () =>
         {
-            const storage = await utils.getFromStorage(["parameters"]);
-            let { countryCode, postCode, latitude, longitude, methodId, country, city } = storage.parameters;
-            methodId = id;
-
-            const parameters = { countryCode, postCode, latitude, longitude, methodId, country, city };
+            parameters.methodId = id;
             utils.saveToStorage("parameters", parameters);
             methodSpan.textContent = methods[id];
             methodsList.style.display = "none";
 
-            if (!countryCode || !postCode || !latitude || !longitude) return;
-
-            const prayerTimes = await utils.getPrayerTimes(countryCode, postCode, latitude, longitude, methodId, country, city);
+            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state, parameters.city);
             utils.saveToStorage("prayerTimes", prayerTimes);
             utils.displayTimes(prayerTimes);
         });
@@ -70,7 +65,7 @@ document.addEventListener("DOMContentLoaded", async () =>
     const citySpan = document.querySelector("#city");
     if (parameters.city && parameters.country)
     {
-        citySpan.textContent = `${parameters.city}, ${parameters.country}`;
+        citySpan.textContent = parameters.state ? `${parameters.city}, ${parameters.state}, ${parameters.country}` : `${parameters.city}, ${parameters.country}`;
     }
     else
     {
@@ -126,7 +121,7 @@ document.addEventListener("DOMContentLoaded", async () =>
                         option.addEventListener("click", async () =>
                         {
                             // Save selected location
-                            const location = `${place.address.city || place.address.town}, ${place.address.country}`;
+                            const location = place.address.state ? `${place.address.city || place.address.town}, ${place.address.state}, ${place.address.country}` : `${place.address.city || place.address.town}, ${place.address.country}`;
                             citySpan.textContent = location;
 
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
@@ -134,19 +129,18 @@ document.addEventListener("DOMContentLoaded", async () =>
                             });
                             const data = await res.json();
 
-                            const countryCode = data.address.country_code;
                             const postCode = data.address.postcode.split(" ")[0];
-                            const parameters = { countryCode: countryCode, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: methodSelect.value, country: place.address.country, city: place.address.city || place.address.town };
-
+                            parameters = { countryCode: data.address.country_code, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
+                            console.log(parameters);
                             utils.saveToStorage({
                                 parameters: parameters
                             });
 
-                            locationResults.style.display = "none";
-
-                            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, methodSelect.value, parameters.country, parameters.city);
+                            const prayerTimes = await utils.getPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.country, parameters.state || place.address.province, parameters.city);
                             utils.saveToStorage("prayerTimes", prayerTimes);
                             utils.displayTimes(prayerTimes);
+
+                            locationResults.style.display = "none";
                         });
 
                         locationResults.appendChild(option);
@@ -157,7 +151,6 @@ document.addEventListener("DOMContentLoaded", async () =>
                 const rect = citySpan.getBoundingClientRect();
                 locationResults.style.top = `${rect.bottom + window.scrollY}px`;
                 locationResults.style.display = "block";
-
             }
             catch (err)
             {
