@@ -1,5 +1,8 @@
 import { countryMap } from "./countryMap.js";
 
+let lastRequestTime = 0;
+let requestQueue = Promise.resolve();
+
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const PRAYER_CALCULATION_METHOD_IDS = {
     0: "Jafari - Ithna Ashari",
@@ -22,6 +25,170 @@ export const ASR_JURISDICTION_METHOD_IDS = {
     0: "Shafi, Hanbali, Maliki",
     1: "Hanafi",
 };
+
+export function setupLocationInput(gridContainer, parameters)
+{
+    const locationResults = document.createElement("div");
+    locationResults.className = "location-results";
+    gridContainer.appendChild(locationResults);
+
+    const locationSpan = document.querySelector(".location");
+
+    // Initial text
+    locationSpan.textContent = parameters.city && parameters.country
+        ? parameters.state
+            ? `${parameters.city}, ${parameters.state}, ${parameters.country}`
+            : `${parameters.city}, ${parameters.country}`
+        : "Click to set location";
+
+    // Make editable on click
+    locationSpan.addEventListener("click", () =>
+    {
+        locationSpan.contentEditable = true;
+        locationSpan.focus();
+        document.execCommand("selectAll", false, null);
+    });
+
+    // Handle search on Enter
+    locationSpan.addEventListener("keydown", async (e) =>
+    {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+
+        const query = locationSpan.textContent.trim();
+        if (!query) return;
+
+        try
+        {
+            const searchResults = await fetchNominatimSearch(query);
+
+            renderLocationResults(searchResults, locationSpan, locationResults, parameters);
+        } catch (err)
+        {
+            console.error("Location search error:", err);
+        }
+    });
+}
+
+export async function fetchNominatimSearch(query)
+{
+    return scheduleNominatimRequest(async () =>
+    {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`,
+            { headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" } }
+        );
+        if (!res.ok) throw new Error("Failed to fetch search results");
+        return res.json();
+    });
+}
+
+export async function fetchZipAndUpdate(place, parameters)
+{
+    return scheduleNominatimRequest(async () =>
+    {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`,
+            { headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" } }
+        );
+        const data = await res.json();
+
+        const zipCode = data.address.postcode?.split(" ")[0] ?? "";
+
+        return {
+            ...parameters,
+            countryCode: data.address.country_code,
+            zipCode: zipCode,
+            latitude: place.lat,
+            longitude: place.lon,
+            country: place.address.country,
+            state: place.address.state || place.address.province || "",
+            city: place.address.city || place.address.town || place.address.village || ""
+        };
+    });
+}
+
+export function renderLocationResults(data, locationSpan, locationResults, parameters)
+{
+    locationResults.innerHTML = "";
+
+    if (data.length === 0)
+    {
+        const noRes = document.createElement("div");
+        noRes.textContent = "No results found";
+        locationResults.appendChild(noRes);
+    } else
+    {
+        data.forEach(place =>
+        {
+            const option = document.createElement("div");
+            option.textContent = place.display_name;
+
+            option.addEventListener("click", async () =>
+            {
+                locationResults.style.display = "none";
+
+                const location = [place.address.city || place.address.town || place.address.village,
+                place.address.state || place.address.province,
+                place.address.country]
+                    .filter(Boolean)
+                    .join(", ");
+                locationSpan.textContent = location;
+
+                parameters = await fetchZipAndUpdate(place, parameters);
+
+                saveToStorage("parameters", parameters);
+
+                const prayerTimes = await fetchPrayerTimes(
+                    parameters.countryCode,
+                    parameters.zipCode,
+                    parameters.latitude,
+                    parameters.longitude,
+                    parameters.methodId,
+                    parameters.asrMethodId,
+                    parameters.country,
+                    parameters.state,
+                    parameters.city
+                );
+
+                saveToStorage("prayerTimes", prayerTimes);
+                displayTimes(prayerTimes);
+            });
+
+            locationResults.appendChild(option);
+        });
+    }
+
+    // Position results below
+    const rect = locationSpan.getBoundingClientRect();
+    if (!document.querySelector(".prayer"))
+    {
+        locationResults.style.position = "relative";
+        locationResults.style.top = "auto";
+    } else
+    {
+        locationResults.style.position = "absolute";
+        locationResults.style.top = `${rect.bottom + window.scrollY}px`;
+    }
+    locationResults.style.display = "block";
+}
+
+export function scheduleNominatimRequest(fn)
+{
+    requestQueue = requestQueue.then(async () =>
+    {
+        const now = Date.now();
+        const wait = Math.max(0, 2000 - (now - lastRequestTime)); // enforce 2s
+        if (wait > 0)
+        {
+            await new Promise(res => setTimeout(res, wait));
+        }
+        lastRequestTime = Date.now();
+        return fn();
+    });
+    return requestQueue;
+}
+
 
 export async function setupDropdown({
     containerSelector,

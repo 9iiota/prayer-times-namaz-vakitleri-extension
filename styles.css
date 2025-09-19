@@ -210,8 +210,7 @@ body
     color: #6b7280;
     font-size: x-small;
     width: 100%;
-
-    top: 50px;
+    top: 100%;
 }
 
 .methods>div
