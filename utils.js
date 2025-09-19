@@ -1,6 +1,84 @@
 import { countryMap } from "./countryMap.js";
 
-const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+export const PRAYER_CALCULATION_METHOD_IDS = {
+    0: "Jafari - Ithna Ashari",
+    1: "Karachi - University of Islamic Sciences",
+    2: "ISNA - Islamic Society of North America",
+    3: "MWL - Muslim World League",
+    4: "Mecca - Umm al-Qura",
+    5: "Egyptian General Authority of Survey",
+    7: "University of Tehran - Institute of Geophysics",
+    8: "Algerian Minister of Religious Affairs and Wakfs",
+    9: "Gulf 90 Minutes Fixed Isha",
+    10: "Egyptian General Authority of Survey (Bis)",
+    11: "UOIF - Union Des Organisations Islamiques De France",
+    12: "Sistem Informasi Hisab Rukyat Indonesia",
+    13: "Diyanet İşleri Başkanlığı",
+    14: "Germany Custom",
+    15: "Russia Custom",
+};
+export const ASR_JURISDICTION_METHOD_IDS = {
+    0: "Shafi, Hanbali, Maliki",
+    1: "Hanafi",
+};
+
+export async function setupDropdown({
+    containerSelector,
+    selectSelector,
+    spanSelector,
+    optionsMap,
+    parameterKey
+})
+{
+    const storage = await getFromStorage(["parameters"]);
+    const parameters = storage.parameters;
+
+    const container = document.querySelector(containerSelector);
+    const select = document.querySelector(selectSelector);
+    const span = document.querySelector(spanSelector);
+
+    // set initial text
+    span.textContent = optionsMap[parameters[parameterKey]];
+
+    // toggle dropdown
+    select.addEventListener("click", () =>
+    {
+        container.style.display = container.style.display === "block" ? "none" : "block";
+    });
+
+    // build options
+    Object.entries(optionsMap).forEach(([id, name]) =>
+    {
+        const option = document.createElement("div");
+        option.textContent = name;
+
+        option.addEventListener("click", async () =>
+        {
+            parameters[parameterKey] = id;
+            saveToStorage("parameters", parameters);
+            span.textContent = optionsMap[id];
+            container.style.display = "none";
+
+            const prayerTimes = await fetchPrayerTimes(
+                parameters.countryCode,
+                parameters.zipCode,
+                parameters.latitude,
+                parameters.longitude,
+                parameters.methodId,
+                parameters.asrMethodId,
+                parameters.country,
+                parameters.state,
+                parameters.city
+            );
+
+            saveToStorage("prayerTimes", prayerTimes);
+            displayTimes(prayerTimes);
+        });
+
+        container.appendChild(option);
+    });
+}
 
 export async function fetchPrayerTimes(countryCode = null, zipCode = null, latitude = null, longitude = null, methodId = 13, asrMethodId = 0, country = null, state = null, city = null)
 {

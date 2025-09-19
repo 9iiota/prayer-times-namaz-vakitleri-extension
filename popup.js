@@ -5,92 +5,22 @@ document.addEventListener("DOMContentLoaded", async () =>
     const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
     let { parameters, prayerTimes } = storage;
 
-    const prayerCalculationMethodIds = {
-        0: "Jafari - Ithna Ashari",
-        1: "Karachi - University of Islamic Sciences",
-        2: "ISNA - Islamic Society of North America",
-        3: "MWL - Muslim World League",
-        4: "Mecca - Umm al-Qura",
-        5: "Egyptian General Authority of Survey",
-        7: "University of Tehran - Institute of Geophysics",
-        8: "Algerian Minister of Religious Affairs and Wakfs",
-        9: "Gulf 90 Minutes Fixed Isha",
-        10: "Egyptian General Authority of Survey (Bis)",
-        11: "UOIF - Union Des Organisations Islamiques De France",
-        12: "Sistem Informasi Hisab Rukyat Indonesia",
-        13: "Diyanet İşleri Başkanlığı",
-        14: "Germany Custom",
-        15: "Russia Custom",
-    };
-
-    const asrJurisdictionMethod = {
-        0: "Shafi, Hanbali, Maliki",
-        1: "Hanafi",
-    };
-
-    const methodsList = document.querySelector(".methods");
-    const methodSelect = document.querySelector(".test-method-select");
-    methodSelect.addEventListener("click", () =>
-    {
-        methodsList.style.display = methodsList.style.display === "block" ? "none" : "block";
+    // Prayer Calculation Method Dropdown
+    utils.setupDropdown({
+        containerSelector: "#calculation-methods",
+        selectSelector: "#calculation-select",
+        spanSelector: "#calculation-span",
+        optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS,
+        parameterKey: "methodId"
     });
 
-    const methodSpan = document.querySelector(".test-method");
-    methodSpan.textContent = prayerCalculationMethodIds[parameters.methodId];
-
-    // TODO change .methods to better name
-    Object.entries(prayerCalculationMethodIds).forEach(([id, name]) =>
-    {
-        const option = document.createElement("div");
-        option.textContent = name;
-
-        // Save selected method, recalculate prayer times and update display
-        option.addEventListener("click", async () =>
-        {
-            parameters.methodId = id;
-            utils.saveToStorage("parameters", parameters);
-            methodSpan.textContent = prayerCalculationMethodIds[id];
-            methodsList.style.display = "none";
-
-            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state, parameters.city);
-            utils.saveToStorage("prayerTimes", prayerTimes);
-            utils.displayTimes(prayerTimes);
-        });
-
-        methodsList.appendChild(option);
-    });
-
-    //////////////////////////////////////////////////
-
-    const methodsListAsr = document.querySelector(".methods-asr");
-    const methodSelectAsr = document.querySelector(".test-method-select-asr");
-    methodSelectAsr.addEventListener("click", () =>
-    {
-        methodsListAsr.style.display = methodsListAsr.style.display === "block" ? "none" : "block";
-    });
-
-    const asrSpan = document.querySelector(".test-asr");
-    asrSpan.textContent = asrJurisdictionMethod[parameters.asrMethodId];
-
-    Object.entries(asrJurisdictionMethod).forEach(([id, name]) =>
-    {
-        const option = document.createElement("div");
-        option.textContent = name;
-
-        // Save selected method, recalculate prayer times and update display
-        option.addEventListener("click", async () =>
-        {
-            parameters.asrMethodId = id;
-            utils.saveToStorage("parameters", parameters);
-            asrSpan.textContent = asrJurisdictionMethod[id];
-            methodsListAsr.style.display = "none";
-
-            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state, parameters.city);
-            utils.saveToStorage("prayerTimes", prayerTimes);
-            utils.displayTimes(prayerTimes);
-        });
-
-        methodsListAsr.appendChild(option);
+    // Asr Jurisdiction Method Dropdown
+    utils.setupDropdown({
+        containerSelector: "#jurisdiction-methods",
+        selectSelector: "#jurisdiction-select",
+        spanSelector: "#jurisdiction-span",
+        optionsMap: utils.ASR_JURISDICTION_METHOD_IDS,
+        parameterKey: "asrMethodId"
     });
 
     if (prayerTimes)
@@ -98,41 +28,33 @@ document.addEventListener("DOMContentLoaded", async () =>
         utils.displayTimes(prayerTimes);
     }
 
+    const gridContainer = document.querySelector(".grid-container");
     const locationResults = document.createElement("div");
     locationResults.className = "location-results";
-    document.body.appendChild(locationResults);
+    gridContainer.appendChild(locationResults);
 
-    const citySpan = document.querySelector("#city");
+    const locationSpan = document.querySelector(".location");
     if (parameters.city && parameters.country)
     {
-        citySpan.textContent = parameters.state ? `${parameters.city}, ${parameters.state}, ${parameters.country}` : `${parameters.city}, ${parameters.country}`;
+        locationSpan.textContent = parameters.state ? `${parameters.city}, ${parameters.state}, ${parameters.country}` : `${parameters.city}, ${parameters.country}`;
     }
     else
     {
-        citySpan.textContent = "Click to set location";
+        locationSpan.textContent = "Click to set location";
     }
-    citySpan.addEventListener("click", () =>
+    locationSpan.addEventListener("click", () =>
     {
-        citySpan.contentEditable = true;
-        citySpan.focus();
+        locationSpan.contentEditable = true;
+        locationSpan.focus();
         document.execCommand('selectAll', false, null);
     });
-    citySpan.addEventListener("blur", () =>
-    {
-        // delay hiding results to allow click
-        setTimeout(() =>
-        {
-            citySpan.contentEditable = false;
-            // locationResults.style.display = "none";
-        }, 200);
-    });
-    citySpan.addEventListener("keydown", async (e) =>
+    locationSpan.addEventListener("keydown", async (e) =>
     {
         // TODO: handle saving
         if (e.key === "Enter")
         {
             e.preventDefault();
-            const query = citySpan.textContent.trim();
+            const query = locationSpan.textContent.trim();
             if (!query) return;
 
             // Nominatim API request
@@ -161,19 +83,24 @@ document.addEventListener("DOMContentLoaded", async () =>
                         option.addEventListener("click", async () =>
                         {
                             // Save selected location
-                            const location = place.address.state ? `${place.address.city || place.address.town}, ${place.address.state}, ${place.address.country}` : `${place.address.city || place.address.town}, ${place.address.country}`;
-                            citySpan.textContent = location;
+                            const country = place.address.country || "";
+                            const state = place.address.state || place.address.province || "";
+                            const city = place.address.city || place.address.town || place.address.village || "";
+                            const location = [city, state, country]
+                                .filter(part => part && part.trim() !== "")
+                                .join(", ");
+                            locationSpan.textContent = location;
 
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
                                 headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
                             });
                             const data = await res.json();
 
-                            const postCode = data.address.postcode.split(" ")[0];
-                            parameters = { countryCode: data.address.country_code, postCode: postCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, asrMethodId: parameters.asrMethodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
+                            const zipCode = data.address.postcode.split(" ")[0];
+                            parameters = { countryCode: data.address.country_code, zipCode: zipCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, asrMethodId: parameters.asrMethodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
                             utils.saveToStorage("parameters", parameters);
 
-                            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.postCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state || place.address.province, parameters.city);
+                            const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.zipCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state || place.address.province, parameters.city);
                             utils.saveToStorage("prayerTimes", prayerTimes);
                             utils.displayTimes(prayerTimes);
 
@@ -185,8 +112,16 @@ document.addEventListener("DOMContentLoaded", async () =>
                 }
 
                 // Position results under the span
-                const rect = citySpan.getBoundingClientRect();
-                locationResults.style.top = `${rect.bottom + window.scrollY}px`;
+                const rect = locationSpan.getBoundingClientRect();
+                if (!document.querySelector(".prayer"))
+                {
+                    locationResults.style.position = "relative";
+                    locationResults.style.top = "none";
+                }
+                else
+                {
+                    locationResults.style.top = `${rect.bottom + window.scrollY}px`;
+                }
                 locationResults.style.display = "block";
             }
             catch (err)
@@ -196,25 +131,30 @@ document.addEventListener("DOMContentLoaded", async () =>
         }
     });
 
+    const calculationContainer = document.querySelector("#calculation-methods");
+    const calculationSelect = document.querySelector("#calculation-select");
+    const jurisdictionContainer = document.querySelector("#jurisdiction-methods");
+    const jurisdictionSelect = document.querySelector("#calculation-select");
+    const locationContainer = document.querySelector(".location-results");
     document.addEventListener("click", (event) =>
     {
         // Close prayer calculation method dropdown if clicked outside
-        if (!methodsList.contains(event.target) && !methodSelect.contains(event.target))
+        if (!calculationContainer.contains(event.target) && !calculationSelect.contains(event.target))
         {
-            methodsList.style.display = "none";
+            calculationContainer.style.display = "none";
         }
 
         // Close asr jurisdiction method dropdown if clicked outside
-        if (!methodsListAsr.contains(event.target) && !methodSelectAsr.contains(event.target))
+        if (!jurisdictionContainer.contains(event.target) && !jurisdictionSelect.contains(event.target))
         {
-            methodsListAsr.style.display = "none";
+            jurisdictionContainer.style.display = "none";
         }
 
         // Close location results if clicked outside
-        if (!locationResults.contains(event.target) && event.target !== citySpan)
+        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
         {
-            locationResults.style.display = "none";
-            citySpan.contentEditable = false;
+            locationContainer.style.display = "none";
+            locationSpan.contentEditable = false;
         }
     });
 });

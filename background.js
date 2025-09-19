@@ -5,7 +5,7 @@ const DEFAULT_STORAGE_VALUES =
     parameters:
     {
         countryCode: null,
-        postCode: null,
+        zipCode: null,
         latitude: null,
         longitude: null,
         methodId: 13,
