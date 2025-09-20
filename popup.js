@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () =>
             selectSelector: "#calculation-select",
             spanSelector: "#calculation-span",
             optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS,
-            parameterKey: "methodId"
+            parameterKey: "calculationMethodId"
         },
         {
             containerSelector: "#jurisdiction-methods",

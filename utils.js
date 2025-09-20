@@ -11,7 +11,7 @@ export const DEFAULT_STORAGE_VALUES =
         zipCode: null,
         latitude: null,
         longitude: null,
-        methodId: 13,
+        calculationMethodId: 13,
         asrMethodId: 0,
         country: null,
         state: null,
@@ -159,7 +159,7 @@ export function renderLocationResults(data, locationSpan, locationResults, param
                     parameters.zipCode,
                     parameters.latitude,
                     parameters.longitude,
-                    parameters.methodId,
+                    parameters.calculationMethodId,
                     parameters.asrMethodId,
                     parameters.country,
                     parameters.state,
@@ -167,7 +167,7 @@ export function renderLocationResults(data, locationSpan, locationResults, param
                 );
 
                 saveToStorage("prayerTimes", prayerTimes);
-                const dailyPrayerTimes = utils.getPrayerTimesByDate(prayerTimes, new Date());
+                const dailyPrayerTimes = getPrayerTimesByDate(prayerTimes, new Date());
                 displayTimes(dailyPrayerTimes);
             });
 
@@ -288,6 +288,9 @@ export async function setupDropdown({
 
         option.addEventListener("click", async () =>
         {
+            const storage = await getFromStorage(["parameters"]);
+            const parameters = storage.parameters;
+
             parameters[parameterKey] = id;
             saveToStorage("parameters", parameters);
             span.textContent = optionsMap[id];
@@ -298,7 +301,7 @@ export async function setupDropdown({
                 parameters.zipCode,
                 parameters.latitude,
                 parameters.longitude,
-                parameters.methodId,
+                parameters.calculationMethodId,
                 parameters.asrMethodId,
                 parameters.country,
                 parameters.state,
@@ -306,7 +309,7 @@ export async function setupDropdown({
             );
 
             saveToStorage("prayerTimes", prayerTimes);
-            const dailyPrayerTimes = utils.getPrayerTimesByDate(prayerTimes, new Date());
+            const dailyPrayerTimes = getPrayerTimesByDate(prayerTimes, new Date());
             displayTimes(dailyPrayerTimes);
         });
 
@@ -314,11 +317,11 @@ export async function setupDropdown({
     });
 }
 
-export async function fetchPrayerTimes(countryCode = null, zipCode = null, latitude = null, longitude = null, methodId = 13, asrMethodId = 0, country = null, state = null, city = null)
+export async function fetchPrayerTimes(countryCode = null, zipCode = null, latitude = null, longitude = null, calculationMethodId = 13, asrMethodId = 0, country = null, state = null, city = null)
 {
     // TODO use state if available
     let prayerTimes = null;
-    if (methodId == 13)
+    if (calculationMethodId == 13 && asrMethodId == 0 && country && city)
     {
         try
         {
@@ -366,7 +369,7 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
     // fallback to the other API
     try
     {
-        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${zipCode}&latitude=${latitude}&longitude=${longitude}&method=${methodId}&juristic=${asrMethodId}&time_format=0`);
+        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${zipCode}&latitude=${latitude}&longitude=${longitude}&method=${calculationMethodId}&juristic=${asrMethodId}&time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
 
@@ -395,8 +398,8 @@ export function getPrayerTimesByDate(prayerTimes, date)
 
 export function getCurrentPrayerIndex(dailyPrayerTimes)
 {
-    const now = getCurrentTime();
-    const passedTimes = dailyPrayerTimes.times.filter(time => time <= now);
+    const currentTime = getCurrentTime();
+    const passedTimes = dailyPrayerTimes.times.filter(time => time <= currentTime);
     return dailyPrayerTimes.times.indexOf(passedTimes.at(-1));
 }
 
@@ -546,7 +549,7 @@ export function getTimeDifference(startTime, endTime)
     // Pad with leading zero if needed
     const pad = n => n.toString().padStart(2, '0');
 
-    return diffH === 0 ? `${pad(diffM)}m` : `${pad(diffH)}:${pad(diffM)}`;
+    return diffH === 0 ? `${diffM}m` : `${diffH}:${pad(diffM)}`;
 }
 
 export async function retrieveCityId(countryId, city)

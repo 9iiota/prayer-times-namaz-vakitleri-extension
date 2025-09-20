@@ -1,5 +1,7 @@
 import * as utils from "./utils.js";
 
+let badgeText, badgeTextColor, badgeBackgroundColor;
+
 chrome.runtime.onInstalled.addListener(test);
 chrome.runtime.onStartup.addListener(test);
 
@@ -35,16 +37,39 @@ async function test()
 
         const timeDifference = utils.getTimeDifference(utils.getCurrentTime(), nextPrayerTime);
         utils.setBadgeText(timeDifference);
-        utils.setBadgeTextColor("#000000");
         if (timeDifference.includes("m"))
         {
             // Less than an hour remaining
-            utils.setBadgeBackgroundColor("#ff0000ff");
+            const textColor = "#000000";
+            if (badgeTextColor !== textColor)
+            {
+                utils.setBadgeTextColor(textColor);
+                badgeTextColor = textColor;
+            }
+
+            const backgroundColor = "#ff0000ff";
+            if (badgeBackgroundColor !== backgroundColor)
+            {
+                utils.setBadgeBackgroundColor(backgroundColor);
+                badgeBackgroundColor = backgroundColor;
+            }
         }
         else
         {
             // More than an hour remaining
-            utils.setBadgeBackgroundColor("#72cbef");
+            const textColor = "#ffffff";
+            if (badgeTextColor !== textColor)
+            {
+                utils.setBadgeTextColor(textColor);
+                badgeTextColor = textColor;
+            }
+
+            const backgroundColor = "#0000ffff";
+            if (badgeBackgroundColor !== backgroundColor)
+            {
+                utils.setBadgeBackgroundColor(backgroundColor);
+                badgeBackgroundColor = backgroundColor;
+            }
         }
     }
 }
