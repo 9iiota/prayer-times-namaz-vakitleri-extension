@@ -5,154 +5,52 @@ document.addEventListener("DOMContentLoaded", async () =>
     const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
     let { parameters, prayerTimes } = storage;
 
-    // Prayer Calculation Method Dropdown
-    utils.setupDropdown({
-        containerSelector: "#calculation-methods",
-        selectSelector: "#calculation-select",
-        spanSelector: "#calculation-span",
-        optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS,
-        parameterKey: "methodId"
-    });
+    const dropdowns = [
+        {
+            containerSelector: "#calculation-methods",
+            selectSelector: "#calculation-select",
+            spanSelector: "#calculation-span",
+            optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS,
+            parameterKey: "methodId"
+        },
+        {
+            containerSelector: "#jurisdiction-methods",
+            selectSelector: "#jurisdiction-select",
+            spanSelector: "#jurisdiction-span",
+            optionsMap: utils.ASR_JURISDICTION_METHOD_IDS,
+            parameterKey: "asrMethodId"
+        }
+    ];
 
-    // Asr Jurisdiction Method Dropdown
-    utils.setupDropdown({
-        containerSelector: "#jurisdiction-methods",
-        selectSelector: "#jurisdiction-select",
-        spanSelector: "#jurisdiction-span",
-        optionsMap: utils.ASR_JURISDICTION_METHOD_IDS,
-        parameterKey: "asrMethodId"
-    });
-
-    if (prayerTimes)
+    for (const config of dropdowns)
     {
-        utils.displayTimes(prayerTimes);
+        utils.setupDropdown(config);
     }
 
     const gridContainer = document.querySelector(".grid-container");
     utils.setupLocationInput(gridContainer, parameters);
 
-    // const locationResults = document.createElement("div");
-    // locationResults.className = "location-results";
-    // gridContainer.appendChild(locationResults);
+    if (prayerTimes)
+    {
+        const dailyPrayerTimes = utils.getPrayerTimesByDate(prayerTimes, new Date());
+        utils.displayTimes(dailyPrayerTimes);
+    }
 
-    // const locationSpan = document.querySelector(".location");
-    // if (parameters.city && parameters.country)
-    // {
-    //     locationSpan.textContent = parameters.state ? `${parameters.city}, ${parameters.state}, ${parameters.country}` : `${parameters.city}, ${parameters.country}`;
-    // }
-    // else
-    // {
-    //     locationSpan.textContent = "Click to set location";
-    // }
-    // locationSpan.addEventListener("click", () =>
-    // {
-    //     locationSpan.contentEditable = true;
-    //     locationSpan.focus();
-    //     document.execCommand('selectAll', false, null);
-    // });
-    // locationSpan.addEventListener("keydown", async (e) =>
-    // {
-    //     if (e.key === "Enter")
-    //     {
-    //         e.preventDefault();
-    //         const query = locationSpan.textContent.trim();
-    //         if (!query) return;
-
-    //         // Nominatim API request
-    //         try
-    //         {
-    //             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`, {
-    //                 headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
-    //             });
-    //             const data = await res.json();
-
-    //             // Show results
-    //             locationResults.innerHTML = "";
-    //             if (data.length === 0)
-    //             {
-    //                 const noRes = document.createElement("div");
-    //                 noRes.textContent = "No results found";
-    //                 locationResults.appendChild(noRes);
-    //             }
-    //             else
-    //             {
-    //                 data.forEach(place =>
-    //                 {
-    //                     const option = document.createElement("div");
-    //                     option.textContent = place.display_name;
-
-    //                     option.addEventListener("click", async () =>
-    //                     {
-    //                         locationResults.style.display = "none";
-
-    //                         // Save selected location
-    //                         const country = place.address.country || "";
-    //                         const state = place.address.state || place.address.province || "";
-    //                         const city = place.address.city || place.address.town || place.address.village || "";
-    //                         const location = [city, state, country]
-    //                             .filter(part => part && part.trim() !== "")
-    //                             .join(", ");
-    //                         locationSpan.textContent = location;
-
-    //                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`, {
-    //                             headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" }
-    //                         });
-    //                         const data = await res.json();
-
-    //                         const zipCode = data.address.postcode.split(" ")[0];
-    //                         parameters = { countryCode: data.address.country_code, zipCode: zipCode, latitude: place.lat, longitude: place.lon, methodId: parameters.methodId, asrMethodId: parameters.asrMethodId, country: place.address.country, state: place.address.state || place.address.province, city: place.address.city || place.address.town };
-    //                         utils.saveToStorage("parameters", parameters);
-
-    //                         const prayerTimes = await utils.fetchPrayerTimes(parameters.countryCode, parameters.zipCode, parameters.latitude, parameters.longitude, parameters.methodId, parameters.asrMethodId, parameters.country, parameters.state || place.address.province, parameters.city);
-    //                         utils.saveToStorage("prayerTimes", prayerTimes);
-    //                         utils.displayTimes(prayerTimes);
-    //                     });
-
-    //                     locationResults.appendChild(option);
-    //                 });
-    //             }
-
-    //             // Position results under the span
-    //             const rect = locationSpan.getBoundingClientRect();
-    //             if (!document.querySelector(".prayer"))
-    //             {
-    //                 locationResults.style.position = "relative";
-    //                 locationResults.style.top = "none";
-    //             }
-    //             else
-    //             {
-    //                 locationResults.style.top = `${rect.bottom + window.scrollY}px`;
-    //             }
-    //             locationResults.style.display = "block";
-    //         }
-    //         catch (err)
-    //         {
-    //             console.error(err);
-    //         }
-    //     }
-    // });
-
-    const calculationContainer = document.querySelector("#calculation-methods");
-    const calculationSelect = document.querySelector("#calculation-select");
-    const jurisdictionContainer = document.querySelector("#jurisdiction-methods");
-    const jurisdictionSelect = document.querySelector("#jurisdiction-select");
-    const locationContainer = document.querySelector(".location-results");
-    const locationSpan = document.querySelector(".location");
     document.addEventListener("click", (event) =>
     {
-        // Close prayer calculation method dropdown if clicked outside
-        if (!calculationContainer.contains(event.target) && !calculationSelect.contains(event.target))
+        dropdowns.forEach(({ containerSelector, selectSelector }) =>
         {
-            calculationContainer.style.display = "none";
-        }
+            const container = document.querySelector(containerSelector);
+            const select = document.querySelector(selectSelector);
+            if (!container.contains(event.target) && !select.contains(event.target))
+            {
+                container.style.display = "none";
+            }
+        });
 
-        // Close asr jurisdiction method dropdown if clicked outside
-        if (!jurisdictionContainer.contains(event.target) && !jurisdictionSelect.contains(event.target))
-        {
-            jurisdictionContainer.style.display = "none";
-        }
-
-        // Close location results if clicked outside
+        // Location dropdown
+        const locationContainer = document.querySelector(".location-results");
+        const locationSpan = document.querySelector(".location");
         if (!locationContainer.contains(event.target) && event.target !== locationSpan)
         {
             locationContainer.style.display = "none";

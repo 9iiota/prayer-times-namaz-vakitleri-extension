@@ -1,53 +1,50 @@
 import * as utils from "./utils.js";
 
-const DEFAULT_STORAGE_VALUES =
+chrome.runtime.onInstalled.addListener(test);
+chrome.runtime.onStartup.addListener(test);
+
+async function test()
 {
-    parameters:
+    await utils.populateStorage();
+
+    const storage = await utils.getFromStorage(["prayerTimes"]);
+    const { prayerTimes } = storage;
+    if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found in storage");
+
+    const now = new Date();
+    const todayTimes = utils.getPrayerTimesByDate(prayerTimes, now);
+    if (!todayTimes) throw new Error("No prayer times found for today");
+
+    let nextPrayerIndex = utils.getCurrentPrayerIndex(todayTimes) + 1;
+    if (nextPrayerIndex > 0)
     {
-        countryCode: null,
-        zipCode: null,
-        latitude: null,
-        longitude: null,
-        methodId: 13,
-        asrMethodId: 0,
-        country: null,
-        state: null,
-        city: null
-    },
-};
-
-chrome.runtime.onInstalled.addListener(populateStorage);
-chrome.runtime.onStartup.addListener(populateStorage);
-
-async function populateStorage()
-{
-    // chrome.storage.sync.clear();
-    try
-    {
-        const keys = Object.keys(DEFAULT_STORAGE_VALUES);
-        const storage = await utils.getFromStorage(keys);
-
-        const toSet = {};
-        for (const [key, defaultValue] of Object.entries(DEFAULT_STORAGE_VALUES))
+        let nextPrayerTime;
+        if (nextPrayerIndex < todayTimes.times.length)
         {
-            if (storage[key] === undefined)
-            {
-                toSet[key] = defaultValue;
-            }
-        }
-
-        if (Object.keys(toSet).length > 0)
-        {
-            await chrome.storage.sync.set(toSet);
-            console.log("✅ Populated default storage values:", toSet);
+            nextPrayerTime = todayTimes.times[nextPrayerIndex];
         }
         else
         {
-            console.log("ℹ️ Storage already initialized.");
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowTimes = utils.getPrayerTimesByDate(prayerTimes, tomorrow);
+            if (!tomorrowTimes) throw new Error("No prayer times found for tomorrow");
+            nextPrayerIndex = 0;
+            nextPrayerTime = tomorrowTimes.times[nextPrayerIndex];
         }
-    }
-    catch (err)
-    {
-        console.error("❌ Failed to populate storage:", err);
+
+        const timeDifference = utils.getTimeDifference(utils.getCurrentTime(), nextPrayerTime);
+        utils.setBadgeText(timeDifference);
+        utils.setBadgeTextColor("#000000");
+        if (timeDifference.includes("m"))
+        {
+            // Less than an hour remaining
+            utils.setBadgeBackgroundColor("#ff0000ff");
+        }
+        else
+        {
+            // More than an hour remaining
+            utils.setBadgeBackgroundColor("#72cbef");
+        }
     }
 }

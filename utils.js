@@ -3,6 +3,21 @@ import { countryMap } from "./countryMap.js";
 let lastRequestTime = 0;
 let requestQueue = Promise.resolve();
 
+export const DEFAULT_STORAGE_VALUES =
+{
+    parameters:
+    {
+        countryCode: null,
+        zipCode: null,
+        latitude: null,
+        longitude: null,
+        methodId: 13,
+        asrMethodId: 0,
+        country: null,
+        state: null,
+        city: null
+    },
+};
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const PRAYER_CALCULATION_METHOD_IDS = {
     0: "Jafari - Ithna Ashari",
@@ -152,7 +167,8 @@ export function renderLocationResults(data, locationSpan, locationResults, param
                 );
 
                 saveToStorage("prayerTimes", prayerTimes);
-                displayTimes(prayerTimes);
+                const dailyPrayerTimes = utils.getPrayerTimesByDate(prayerTimes, new Date());
+                displayTimes(dailyPrayerTimes);
             });
 
             locationResults.appendChild(option);
@@ -189,6 +205,56 @@ export function scheduleNominatimRequest(fn)
     return requestQueue;
 }
 
+export async function setBadgeText(text)
+{
+    const currentText = await chrome.action.getBadgeText({});
+    if (text !== currentText)
+    {
+        chrome.action.setBadgeText({ text: text });
+        console.log('Badge text set to:', text);
+    }
+}
+
+export async function setBadgeTextColor(color)
+{
+    const currentColorArray = await chrome.action.getBadgeTextColor({});
+    const currentColor = rgbaArrayToHex(currentColorArray);
+    console.log('Current badge text color:', currentColor);
+
+    if (color !== currentColor)
+    {
+        chrome.action.setBadgeTextColor({ color: color });
+        console.log('Badge text color set to:', color);
+    }
+}
+
+export async function setBadgeBackgroundColor(color)
+{
+    const currentColorArray = await chrome.action.getBadgeBackgroundColor({});
+    const currentColor = rgbaArrayToHex(currentColorArray);
+    console.log('Current badge background color:', currentColor);
+
+    if (color !== currentColor)
+    {
+        chrome.action.setBadgeBackgroundColor({ color: color });
+        console.log('Badge background color set to:', color);
+    }
+}
+
+export function rgbaArrayToHex(colorArray)
+{
+    // Ensure at least RGB values are provided
+    if (colorArray.length < 3)
+    {
+        return false;
+    }
+
+    // Extract RGB values, ignore alpha for hex conversion
+    const [r, g, b] = colorArray;
+
+    // Convert each component to a two-digit hex string and concatenate
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+}
 
 export async function setupDropdown({
     containerSelector,
@@ -240,7 +306,8 @@ export async function setupDropdown({
             );
 
             saveToStorage("prayerTimes", prayerTimes);
-            displayTimes(prayerTimes);
+            const dailyPrayerTimes = utils.getPrayerTimesByDate(prayerTimes, new Date());
+            displayTimes(dailyPrayerTimes);
         });
 
         container.appendChild(option);
@@ -319,17 +386,24 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
     }
 }
 
-export function displayTimes(prayerTimes)
+export function getPrayerTimesByDate(prayerTimes, date)
 {
-    const container = document.querySelector(".grid-container");
-    const today = new Date().toISOString().split("T")[0];
-    const todayTimes = prayerTimes.find(times => times.date === today);
-    if (!todayTimes) return;
+    const targetDate = new Date(date);
+    const dateStr = targetDate.toISOString().split("T")[0];
+    return prayerTimes.find(entry => entry.date === dateStr);
+}
 
-    // Find current prayer index
+export function getCurrentPrayerIndex(dailyPrayerTimes)
+{
     const now = getCurrentTime();
-    const passedTimes = todayTimes.times.filter(time => time <= now);
-    const currentPrayerIndex = todayTimes.times.indexOf(passedTimes.at(-1));
+    const passedTimes = dailyPrayerTimes.times.filter(time => time <= now);
+    return dailyPrayerTimes.times.indexOf(passedTimes.at(-1));
+}
+
+export function displayTimes(dailyPrayerTimes)
+{
+    const gridContainer = document.querySelector(".grid-container");
+    const currentPrayerIndex = getCurrentPrayerIndex(dailyPrayerTimes);
 
     // Clear old "current-prayer" marker
     document.querySelectorAll("#current-prayer").forEach(el => el.removeAttribute("id"));
@@ -337,7 +411,7 @@ export function displayTimes(prayerTimes)
     PRAYER_NAMES.forEach((name, i) =>
     {
         // console.log(name, i);
-        let div = container.querySelectorAll(".prayer")[i];
+        let div = gridContainer.querySelectorAll(".prayer")[i];
 
         // Create element if missing
         if (!div)
@@ -376,12 +450,12 @@ export function displayTimes(prayerTimes)
             // div.appendChild(leftDiv);
             div.appendChild(prayerContainer);
             // div.appendChild(rightDiv);
-            container.appendChild(div);
+            gridContainer.appendChild(div);
         }
 
         // Update time
         const timeSpan = div.querySelector(".prayer-time");
-        timeSpan.textContent = todayTimes.times[i];
+        timeSpan.textContent = dailyPrayerTimes.times[i];
 
         // Highlight current prayer
         if (i === currentPrayerIndex)
@@ -472,7 +546,7 @@ export function getTimeDifference(startTime, endTime)
     // Pad with leading zero if needed
     const pad = n => n.toString().padStart(2, '0');
 
-    return `${pad(diffH)}: ${pad(diffM)}`;
+    return diffH === 0 ? `${pad(diffM)}m` : `${pad(diffH)}:${pad(diffM)}`;
 }
 
 export async function retrieveCityId(countryId, city)
@@ -530,4 +604,37 @@ export function fuzzySearch(query, options, threshold = 0.3)
 
     const results = fuse.search(query, { limit: 1 });
     return results.length > 0 ? results[0].item : null;
+}
+
+export async function populateStorage()
+{
+    // chrome.storage.sync.clear();
+    try
+    {
+        const keys = Object.keys(DEFAULT_STORAGE_VALUES);
+        const storage = await getFromStorage(keys);
+
+        const toSet = {};
+        for (const [key, defaultValue] of Object.entries(DEFAULT_STORAGE_VALUES))
+        {
+            if (storage[key] === undefined)
+            {
+                toSet[key] = defaultValue;
+            }
+        }
+
+        if (Object.keys(toSet).length > 0)
+        {
+            await chrome.storage.sync.set(toSet);
+            console.log("✅ Populated default storage values:", toSet);
+        }
+        else
+        {
+            console.log("ℹ️ Storage already initialized.");
+        }
+    }
+    catch (err)
+    {
+        console.error("❌ Failed to populate storage:", err);
+    }
 }
