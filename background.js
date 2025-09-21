@@ -2,8 +2,16 @@ import * as utils from "./utils.js";
 
 let badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
 
-chrome.runtime.onInstalled.addListener(startTask);
-chrome.runtime.onStartup.addListener(startTask);
+chrome.runtime.onInstalled.addListener(async () =>
+{
+    await utils.populateStorage();
+    startTask();
+});
+chrome.runtime.onStartup.addListener(async () =>
+{
+    await utils.populateStorage();
+    startTask();
+});
 
 async function startTask() 
 {
@@ -17,8 +25,6 @@ async function startTask()
 
 async function test()
 {
-    await utils.populateStorage();
-
     const storage = await utils.getFromStorage(["prayerTimes"]);
     const { prayerTimes } = storage;
     if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found in storage");
@@ -84,13 +90,13 @@ async function test()
         }
     }
 
-    if (!taskIntervallMs)
-    {
-        taskIntervallMs = utils.msUntilNextMinute() + 1000; // Add a second to ensure we are in the next minute
-    }
-    else if (timeDifference.includes("s"))
+    if (timeDifference.includes("s"))
     {
         taskIntervallMs = 1000; // Set to 1 second
+    }
+    else if (!taskIntervallMs)
+    {
+        taskIntervallMs = utils.msUntilNextMinute() + 1000; // Add a second to ensure we are in the next minute
     }
     else if (taskIntervallMs < 60000)
     {
