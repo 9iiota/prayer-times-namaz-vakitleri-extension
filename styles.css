@@ -80,7 +80,7 @@ body
 }
 
 /* Sun time can't shown as prayed */
-.prayer:nth-of-type(5)
+.prayer:nth-of-type(6)
 {
     pointer-events: none;
 }

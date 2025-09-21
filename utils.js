@@ -398,7 +398,7 @@ export function getPrayerTimesByDate(prayerTimes, date)
 
 export function getCurrentPrayerIndex(dailyPrayerTimes)
 {
-    const currentTime = getCurrentTime();
+    const currentTime = getCurrentTimeFormatted();
     const passedTimes = dailyPrayerTimes.times.filter(time => time <= currentTime);
     return dailyPrayerTimes.times.indexOf(passedTimes.at(-1));
 }
@@ -468,7 +468,7 @@ export function displayTimes(dailyPrayerTimes)
     });
 }
 
-export function getCurrentTime()
+export function getCurrentTimeFormatted()
 {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -529,6 +529,15 @@ export function saveToStorage(keyOrObject, value)
     });
 }
 
+export function msUntilNextMinute()
+{
+    const now = new Date();
+    const seconds = now.getSeconds();
+    const milliseconds = now.getMilliseconds();
+
+    return (60 - seconds) * 1000 - milliseconds;
+}
+
 export function getTimeDifference(startTime, endTime)
 {
     // Convert HH:MM to total minutes
@@ -539,6 +548,12 @@ export function getTimeDifference(startTime, endTime)
     const endTotal = endH * 60 + endM;
 
     let diff = endTotal - startTotal;
+
+    if (diff <= 1)
+    {
+        const secondsUntilNextMinute = msUntilNextMinute() / 1000;
+        return `${Math.ceil(secondsUntilNextMinute)}s`;
+    }
 
     // If the difference is negative, assume it's the next day
     if (diff < 0) diff += 24 * 60;
