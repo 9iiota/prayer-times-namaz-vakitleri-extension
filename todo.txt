@@ -1,0 +1,2 @@
+- move background functions to utils
+- current prayer red if not prayed and less than 1 hour left

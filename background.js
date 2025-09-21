@@ -2,6 +2,8 @@ import * as utils from "./utils.js";
 
 let badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
 
+// TODO save isPrayed and change color
+
 chrome.runtime.onInstalled.addListener(async () =>
 {
     await utils.populateStorage();
@@ -65,7 +67,7 @@ async function test()
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = "#ff0000ff";
+        const backgroundColor = "#ffbaba";
         if (badgeBackgroundColor !== backgroundColor)
         {
             utils.setBadgeBackgroundColor(backgroundColor);
@@ -75,14 +77,14 @@ async function test()
     else
     {
         // More than an hour remaining
-        const textColor = "#ffffff";
+        const textColor = "#000000";
         if (badgeTextColor !== textColor)
         {
             utils.setBadgeTextColor(textColor);
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = "#0000ffff";
+        const backgroundColor = "#baebff";
         if (badgeBackgroundColor !== backgroundColor)
         {
             utils.setBadgeBackgroundColor(backgroundColor);

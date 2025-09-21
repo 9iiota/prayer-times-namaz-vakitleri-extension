@@ -115,15 +115,15 @@ body
 #current-prayer
 {
     /* background-color: #baffde; */
-    background-color: #ffbaba;
+    /* background-color: #ffbaba; */
     /* background-color: #baebff; */
 
-    /* transition: background-color 1s; */
+    transition: background-color .2s, filter .2s;
 }
 
 #current-prayer.prayed
 {
-    background-color: rgb(100, 255, 177);
+    background-color: #baffde;
 }
 
 #current-prayer:hover

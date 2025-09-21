@@ -17,6 +17,7 @@ export const DEFAULT_STORAGE_VALUES =
         state: null,
         city: null
     },
+    isPrayed: false,
 };
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const PRAYER_CALCULATION_METHOD_IDS = {
@@ -403,8 +404,11 @@ export function getCurrentPrayerIndex(dailyPrayerTimes)
     return dailyPrayerTimes.times.indexOf(passedTimes.at(-1));
 }
 
-export function displayTimes(dailyPrayerTimes)
+export async function displayTimes(dailyPrayerTimes)
 {
+    const storage = await getFromStorage(["isPrayed"]);
+    const isPrayed = storage.isPrayed;
+
     const gridContainer = document.querySelector(".grid-container");
     const currentPrayerIndex = getCurrentPrayerIndex(dailyPrayerTimes);
 
@@ -421,10 +425,6 @@ export function displayTimes(dailyPrayerTimes)
         {
             div = document.createElement("div");
             div.className = "prayer";
-            div.addEventListener("click", () =>
-            {
-                div.classList.toggle("prayed");
-            });
 
             // const leftDiv = document.createElement("div");
             // const leftSpan = document.createElement("span");
@@ -464,6 +464,22 @@ export function displayTimes(dailyPrayerTimes)
         if (i === currentPrayerIndex)
         {
             div.id = "current-prayer";
+            if (isPrayed) div.classList.add("prayed");
+            else div.classList.remove("prayed");
+
+            div.addEventListener("click", async () =>
+            {
+                if (!div.classList.contains("prayed"))
+                {
+                    div.classList.add("prayed");
+                    await saveToStorage("isPrayed", true);
+                }
+                else
+                {
+                    div.classList.remove("prayed");
+                    await saveToStorage("isPrayed", false);
+                }
+            });
         }
     });
 }
