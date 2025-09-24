@@ -54,7 +54,7 @@ body
     text-align: center;
 }
 
-.location
+.location-name
 {
     color: #374151;
     font-weight: bold;
@@ -62,7 +62,7 @@ body
     text-decoration: underline;
 }
 
-.location:hover
+.location-name:hover
 {
     cursor: pointer;
     filter: brightness(1.9);
@@ -198,7 +198,7 @@ body
     filter: brightness(.9);
 }
 
-.methods
+.method-options
 {
     position: absolute;
     background-color: #fff;
@@ -213,18 +213,18 @@ body
     top: 100%;
 }
 
-.methods>div
+.method-options>div
 {
     padding: var(--default-vertical-padding);
     border-bottom: 1px solid #eee;
 }
 
-.methods>div:last-child
+.method-options>div:last-child
 {
     border-bottom: none;
 }
 
-.methods>div:hover
+.method-options>div:hover
 {
     cursor: pointer;
     background-color: #f3f4f6;

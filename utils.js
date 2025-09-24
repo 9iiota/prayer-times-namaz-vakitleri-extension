@@ -48,37 +48,46 @@ export function setupLocationInput(gridContainer, parameters)
     locationResults.className = "location-results";
     gridContainer.appendChild(locationResults);
 
-    const locationSpan = document.querySelector(".location");
+    const dropdowns = document.querySelectorAll(".method-container");
+    const lastDropdown = dropdowns[dropdowns.length - 1];
+
+    const locationContainer = document.createElement("div");
+    locationContainer.className = "location-container";
+    lastDropdown.after(locationContainer);
+
+    const locationName = document.createElement("span");
+    locationName.className = "location-name";
+    locationContainer.appendChild(locationName);
 
     // Initial text
-    locationSpan.textContent = parameters.city && parameters.country
+    locationName.textContent = parameters.city && parameters.country
         ? parameters.state
             ? `${parameters.city}, ${parameters.state}, ${parameters.country}`
             : `${parameters.city}, ${parameters.country}`
         : "Click to set location";
 
     // Make editable on click
-    locationSpan.addEventListener("click", () =>
+    locationName.addEventListener("click", () =>
     {
-        locationSpan.contentEditable = true;
-        locationSpan.focus();
+        locationName.contentEditable = true;
+        locationName.focus();
         document.execCommand("selectAll", false, null);
     });
 
     // Handle search on Enter
-    locationSpan.addEventListener("keydown", async (e) =>
+    locationName.addEventListener("keydown", async (e) =>
     {
         if (e.key !== "Enter") return;
         e.preventDefault();
 
-        const query = locationSpan.textContent.trim();
+        const query = locationName.textContent.trim();
         if (!query) return;
 
         try
         {
             const searchResults = await fetchNominatimSearch(query);
 
-            renderLocationResults(searchResults, locationSpan, locationResults, parameters);
+            renderLocationResults(searchResults, locationName, locationResults, parameters);
         } catch (err)
         {
             console.error("Location search error:", err);
@@ -258,9 +267,7 @@ export function rgbaArrayToHex(colorArray)
 }
 
 export async function setupDropdown({
-    containerSelector,
-    selectSelector,
-    spanSelector,
+    labelText,
     optionsMap,
     parameterKey
 })
@@ -268,17 +275,36 @@ export async function setupDropdown({
     const storage = await getFromStorage(["parameters"]);
     const parameters = storage.parameters;
 
-    const container = document.querySelector(containerSelector);
-    const select = document.querySelector(selectSelector);
-    const span = document.querySelector(spanSelector);
+    const gridContainer = document.querySelector(".grid-container");
+
+    const methodContainer = document.createElement("div");
+    methodContainer.className = "method-container";
+    gridContainer.prepend(methodContainer);
+
+    const label = document.createElement("span");
+    label.className = "method-label";
+    if (labelText) label.textContent = labelText;
+    methodContainer.appendChild(label);
+
+    const select = document.createElement("div");
+    select.className = "method-select";
+    methodContainer.appendChild(select);
+
+    const name = document.createElement("span");
+    name.className = "method-name";
+    select.appendChild(name);
+
+    const optionsContainer = document.createElement("div");
+    optionsContainer.className = "method-options";
+    methodContainer.appendChild(optionsContainer);
 
     // set initial text
-    span.textContent = optionsMap[parameters[parameterKey]];
+    name.textContent = optionsMap[parameters[parameterKey]];
 
     // toggle dropdown
     select.addEventListener("click", () =>
     {
-        container.style.display = container.style.display === "block" ? "none" : "block";
+        optionsContainer.style.display = optionsContainer.style.display === "block" ? "none" : "block";
     });
 
     // build options
@@ -294,8 +320,8 @@ export async function setupDropdown({
 
             parameters[parameterKey] = id;
             saveToStorage("parameters", parameters);
-            span.textContent = optionsMap[id];
-            container.style.display = "none";
+            name.textContent = optionsMap[id];
+            optionsContainer.style.display = "none";
 
             const prayerTimes = await fetchPrayerTimes(
                 parameters.countryCode,
@@ -314,7 +340,7 @@ export async function setupDropdown({
             displayTimes(dailyPrayerTimes);
         });
 
-        container.appendChild(option);
+        optionsContainer.appendChild(option);
     });
 }
 
