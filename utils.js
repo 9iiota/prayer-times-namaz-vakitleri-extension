@@ -2,6 +2,7 @@ import { countryMap } from "./countryMap.js";
 
 let lastRequestTime = 0;
 let requestQueue = Promise.resolve();
+let NEXT_PRAYER_INDEX, PRAYER_TIMES, badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
 
 export const DEFAULT_STORAGE_VALUES =
 {
@@ -41,6 +42,122 @@ export const ASR_JURISDICTION_METHOD_IDS = {
     0: "Shafi, Hanbali, Maliki",
     1: "Hanafi",
 };
+
+export async function timeLog(message)
+{
+    const now = new Date();
+    const formatted = now.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false, // force 24-hour
+    });
+
+    console.log(`[${formatted}] ${message}`);
+}
+
+export async function startPrayerTimeBadgeTask() 
+{
+    if (taskId) clearTimeout(taskId);
+    await updatePrayerTimeBadge();
+}
+
+// TODO change function name
+export async function updatePrayerTimeBadge()
+{
+    if (!PRAYER_TIMES)
+    {
+        const storage = await getFromStorage(["prayerTimes"]);
+        const { prayerTimes } = storage;
+        if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found in storage");
+        PRAYER_TIMES = prayerTimes;
+    }
+
+    // TODO needs to be done only once a day
+    const now = new Date();
+    const todayTimes = getPrayerTimesByDate(PRAYER_TIMES, now);
+    if (!todayTimes) throw new Error("No prayer times found for today");
+
+    let nextPrayerIndex = getCurrentPrayerIndex(todayTimes) + 1;
+    let nextPrayerTime;
+    if (nextPrayerIndex < todayTimes.times.length)
+    {
+        nextPrayerTime = todayTimes.times[nextPrayerIndex];
+    }
+    else
+    {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowTimes = getPrayerTimesByDate(PRAYER_TIMES, tomorrow);
+        if (!tomorrowTimes) throw new Error("No prayer times found for tomorrow");
+        nextPrayerIndex = 0;
+        nextPrayerTime = tomorrowTimes.times[nextPrayerIndex];
+    }
+
+    if (NEXT_PRAYER_INDEX === undefined)
+    {
+        NEXT_PRAYER_INDEX = nextPrayerIndex;
+    }
+    else if (NEXT_PRAYER_INDEX !== nextPrayerIndex)
+    {
+        NEXT_PRAYER_INDEX = nextPrayerIndex;
+        displayTimes(todayTimes);
+    }
+
+    const timeDifference = getTimeDifference(getCurrentTimeFormatted(), nextPrayerTime);
+    if (badgeText !== timeDifference)
+    {
+        badgeText = timeDifference;
+        setBadgeText(timeDifference);
+    }
+    if (timeDifference.includes("m"))
+    {
+        // Less than an hour remaining
+        const textColor = "#000000";
+        if (badgeTextColor !== textColor)
+        {
+            setBadgeTextColor(textColor);
+            badgeTextColor = textColor;
+        }
+
+        const backgroundColor = "#ffbaba";
+        if (badgeBackgroundColor !== backgroundColor)
+        {
+            setBadgeBackgroundColor(backgroundColor);
+            badgeBackgroundColor = backgroundColor;
+        }
+    }
+    else
+    {
+        // More than an hour remaining
+        const textColor = "#000000";
+        if (badgeTextColor !== textColor)
+        {
+            setBadgeTextColor(textColor);
+            badgeTextColor = textColor;
+        }
+
+        const backgroundColor = "#baebff";
+        if (badgeBackgroundColor !== backgroundColor)
+        {
+            setBadgeBackgroundColor(backgroundColor);
+            badgeBackgroundColor = backgroundColor;
+        }
+    }
+
+    if (timeDifference.includes("s"))
+    {
+        taskIntervallMs = 1000; // Set to 1 second
+    }
+    else
+    {
+        taskIntervallMs = msUntilNextMinute() + 1000; // Add a second to ensure we are in the next minute
+    }
+    taskId = setTimeout(updatePrayerTimeBadge, taskIntervallMs);
+}
 
 export function setupLocationInput(gridContainer, parameters)
 {
@@ -205,11 +322,17 @@ export function scheduleNominatimRequest(fn)
     {
         const now = Date.now();
         const wait = Math.max(0, 2000 - (now - lastRequestTime)); // enforce 2s
+
+        timeLog(`Scheduling Nominatim request. Will wait ${wait} ms before sending.`);
+
         if (wait > 0)
         {
             await new Promise(res => setTimeout(res, wait));
         }
         lastRequestTime = Date.now();
+
+        timeLog(`Nominatim request sent.`);
+
         return fn();
     });
     return requestQueue;
@@ -221,34 +344,20 @@ export async function setBadgeText(text)
     if (text !== currentText)
     {
         chrome.action.setBadgeText({ text: text });
-        console.log('Badge text set to:', text);
+        timeLog(`Badge text set to: ${text}`);
     }
 }
 
 export async function setBadgeTextColor(color)
 {
-    const currentColorArray = await chrome.action.getBadgeTextColor({});
-    const currentColor = rgbaArrayToHex(currentColorArray);
-    console.log('Current badge text color:', currentColor);
-
-    if (color !== currentColor)
-    {
-        chrome.action.setBadgeTextColor({ color: color });
-        console.log('Badge text color set to:', color);
-    }
+    chrome.action.setBadgeTextColor({ color: color });
+    timeLog(`Badge text color set to: ${color}`);
 }
 
 export async function setBadgeBackgroundColor(color)
 {
-    const currentColorArray = await chrome.action.getBadgeBackgroundColor({});
-    const currentColor = rgbaArrayToHex(currentColorArray);
-    console.log('Current badge background color:', currentColor);
-
-    if (color !== currentColor)
-    {
-        chrome.action.setBadgeBackgroundColor({ color: color });
-        console.log('Badge background color set to:', color);
-    }
+    chrome.action.setBadgeBackgroundColor({ color: color });
+    timeLog(`Badge background color set to: ${color}`);
 }
 
 export function rgbaArrayToHex(colorArray)
@@ -443,7 +552,6 @@ export async function displayTimes(dailyPrayerTimes)
 
     PRAYER_NAMES.forEach((name, i) =>
     {
-        // console.log(name, i);
         let div = gridContainer.querySelectorAll(".prayer")[i];
 
         // Create element if missing
@@ -451,19 +559,11 @@ export async function displayTimes(dailyPrayerTimes)
         {
             div = document.createElement("div");
             div.className = "prayer";
-
-            // const leftDiv = document.createElement("div");
-            // const leftSpan = document.createElement("span");
-            // leftSpan.textContent = "-";
-            // leftSpan.className = "time-adjust";
+            gridContainer.appendChild(div);
 
             const prayerContainer = document.createElement("div");
             prayerContainer.className = "prayer-container";
-
-            // const rightDiv = document.createElement("div");
-            // const rightSpan = document.createElement("span");
-            // rightSpan.textContent = "+";
-            // rightSpan.className = "time-adjust";
+            div.appendChild(prayerContainer);
 
             const nameSpan = document.createElement("span");
             nameSpan.className = "prayer-name";
@@ -472,14 +572,8 @@ export async function displayTimes(dailyPrayerTimes)
             const timeSpan = document.createElement("span");
             timeSpan.className = "prayer-time";
 
-            // leftDiv.appendChild(leftSpan);
             prayerContainer.appendChild(nameSpan);
             prayerContainer.appendChild(timeSpan);
-            // rightDiv.appendChild(rightSpan);
-            // div.appendChild(leftDiv);
-            div.appendChild(prayerContainer);
-            // div.appendChild(rightDiv);
-            gridContainer.appendChild(div);
         }
 
         // Update time
@@ -510,11 +604,15 @@ export async function displayTimes(dailyPrayerTimes)
     });
 }
 
-export function getCurrentTimeFormatted()
+export function getCurrentTimeFormatted(extraMinutes = 0)
 {
     const now = new Date();
+    // Add extraMinutes properly
+    now.setMinutes(now.getMinutes() + extraMinutes);
+
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
+
     return `${hours}:${minutes}`;
 }
 
@@ -564,7 +662,7 @@ export function saveToStorage(keyOrObject, value)
             else
             {
                 const savedKeys = Object.keys(data);
-                console.log(`✅ Saved successfully: ${savedKeys.join(", ")}`);
+                console.log(`Saved successfully to chrome storage: ${savedKeys.join(", ")}`);
                 resolve(data);
             }
         });
@@ -586,22 +684,26 @@ export function getTimeDifference(startTime, endTime)
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);
 
-    const startTotal = startH * 60 + startM;
-    const endTotal = endH * 60 + endM;
+    const totalStartMinutes = startH * 60 + startM;
+    const totalEndMinutes = endH * 60 + endM;
 
-    let diff = endTotal - startTotal;
+    let timeDifferenceMinutes = totalEndMinutes - totalStartMinutes;
 
-    if (diff <= 1)
+    if (timeDifferenceMinutes === 1)
     {
         const secondsUntilNextMinute = msUntilNextMinute() / 1000;
         return `${Math.ceil(secondsUntilNextMinute)}s`;
     }
+    else if (timeDifferenceMinutes === 0)
+    {
+        return "0s";
+    }
 
     // If the difference is negative, assume it's the next day
-    if (diff < 0) diff += 24 * 60;
+    if (timeDifferenceMinutes < 0) timeDifferenceMinutes += 24 * 60;
 
-    const diffH = Math.floor(diff / 60);
-    const diffM = diff % 60;
+    const diffH = Math.floor(timeDifferenceMinutes / 60);
+    const diffM = timeDifferenceMinutes % 60;
 
     // Pad with leading zero if needed
     const pad = n => n.toString().padStart(2, '0');
@@ -686,15 +788,15 @@ export async function populateStorage()
         if (Object.keys(toSet).length > 0)
         {
             await chrome.storage.sync.set(toSet);
-            console.log("✅ Populated default storage values:", toSet);
+            timeLog(`Populated default storage values`);
         }
         else
         {
-            console.log("ℹ️ Storage already initialized.");
+            timeLog("Storage already initialized.");
         }
     }
     catch (err)
     {
-        console.error("❌ Failed to populate storage:", err);
+        console.error("Failed to populate storage:", err);
     }
 }
