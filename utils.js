@@ -2,7 +2,7 @@ import { countryMap } from "./countryMap.js";
 
 let lastRequestTime = 0;
 let requestQueue = Promise.resolve();
-let NEXT_PRAYER_INDEX, PRAYER_TIMES, badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
+let NEXT_PRAYER_INDEX, PRAYER_TIMES, IS_PRAYED, badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
 
 export const DEFAULT_STORAGE_VALUES =
 {
@@ -42,6 +42,10 @@ export const ASR_JURISDICTION_METHOD_IDS = {
     0: "Shafi, Hanbali, Maliki",
     1: "Hanafi",
 };
+export const BLACK = "#000000";
+export const LIGHT_RED = "#ffbaba";
+export const LIGHT_BLUE = "#baebff";
+export const LIGHT_GREEN = "#baffde";
 
 export async function timeLog(message)
 {
@@ -68,12 +72,14 @@ export async function startPrayerTimeBadgeTask()
 // TODO change function name
 export async function updatePrayerTimeBadge()
 {
-    if (!PRAYER_TIMES)
+    if (!PRAYER_TIMES || !IS_PRAYED)
     {
-        const storage = await getFromStorage(["prayerTimes"]);
-        const { prayerTimes } = storage;
+        const storage = await getFromStorage(["prayerTimes", "isPrayed"]);
+        const { prayerTimes, isPrayed } = storage;
         if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found in storage");
+        if (isPrayed === undefined) throw new Error("isPrayed not found in storage");
         PRAYER_TIMES = prayerTimes;
+        IS_PRAYED = isPrayed;
     }
 
     // TODO needs to be done only once a day
@@ -116,14 +122,14 @@ export async function updatePrayerTimeBadge()
     if (timeDifference.includes("m"))
     {
         // Less than an hour remaining
-        const textColor = "#000000";
+        const textColor = BLACK;
         if (badgeTextColor !== textColor)
         {
             setBadgeTextColor(textColor);
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = "#ffbaba";
+        const backgroundColor = IS_PRAYED ? LIGHT_GREEN : LIGHT_RED;
         if (badgeBackgroundColor !== backgroundColor)
         {
             setBadgeBackgroundColor(backgroundColor);
@@ -133,14 +139,14 @@ export async function updatePrayerTimeBadge()
     else
     {
         // More than an hour remaining
-        const textColor = "#000000";
+        const textColor = BLACK;
         if (badgeTextColor !== textColor)
         {
             setBadgeTextColor(textColor);
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = "#baebff";
+        const backgroundColor = IS_PRAYED ? LIGHT_GREEN : LIGHT_BLUE;
         if (badgeBackgroundColor !== backgroundColor)
         {
             setBadgeBackgroundColor(backgroundColor);
@@ -323,10 +329,9 @@ export function scheduleNominatimRequest(fn)
         const now = Date.now();
         const wait = Math.max(0, 2000 - (now - lastRequestTime)); // enforce 2s
 
-        timeLog(`Scheduling Nominatim request. Will wait ${wait} ms before sending.`);
-
         if (wait > 0)
         {
+            timeLog(`Scheduling Nominatim request. Will wait ${wait} ms before sending.`);
             await new Promise(res => setTimeout(res, wait));
         }
         lastRequestTime = Date.now();
@@ -390,28 +395,28 @@ export async function setupDropdown({
     methodContainer.className = "method-container";
     gridContainer.prepend(methodContainer);
 
-    const label = document.createElement("span");
-    label.className = "method-label";
-    if (labelText) label.textContent = labelText;
-    methodContainer.appendChild(label);
+    const methodLabel = document.createElement("span");
+    methodLabel.className = "method-label";
+    if (labelText) methodLabel.textContent = labelText;
+    methodContainer.appendChild(methodLabel);
 
-    const select = document.createElement("div");
-    select.className = "method-select";
-    methodContainer.appendChild(select);
+    const methodSelect = document.createElement("div");
+    methodSelect.className = "method-select";
+    methodContainer.appendChild(methodSelect);
 
-    const name = document.createElement("span");
-    name.className = "method-name";
-    select.appendChild(name);
+    const methodName = document.createElement("span");
+    methodName.className = "method-name";
+    methodSelect.appendChild(methodName);
 
     const optionsContainer = document.createElement("div");
     optionsContainer.className = "method-options";
     methodContainer.appendChild(optionsContainer);
 
     // set initial text
-    name.textContent = optionsMap[parameters[parameterKey]];
+    methodName.textContent = optionsMap[parameters[parameterKey]];
 
     // toggle dropdown
-    select.addEventListener("click", () =>
+    methodSelect.addEventListener("click", () =>
     {
         optionsContainer.style.display = optionsContainer.style.display === "block" ? "none" : "block";
     });
@@ -419,17 +424,18 @@ export async function setupDropdown({
     // build options
     Object.entries(optionsMap).forEach(([id, name]) =>
     {
+        // console.log(id, name);
         const option = document.createElement("div");
         option.textContent = name;
 
         option.addEventListener("click", async () =>
         {
             const storage = await getFromStorage(["parameters"]);
-            const parameters = storage.parameters;
+            const { parameters } = storage;
 
             parameters[parameterKey] = id;
             saveToStorage("parameters", parameters);
-            name.textContent = optionsMap[id];
+            methodName.textContent = optionsMap[id];
             optionsContainer.style.display = "none";
 
             const prayerTimes = await fetchPrayerTimes(
@@ -457,10 +463,13 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
 {
     // TODO use state if available
     let prayerTimes = null;
+    console.log(calculationMethodId, asrMethodId, country, city);
+    // Try to scrape from https://namazvakitleri.diyanet.gov.tr/ first because the API times are usually off by a few minutes compared to the official site
     if (calculationMethodId == 13 && asrMethodId == 0 && country && city)
     {
         try
         {
+            console.log("Trying method 13 scraping");
             const countryId = Object.keys(countryMap).find(key => countryMap[key] === country);
             if (!countryId) throw new Error('Country not found in countryMap');
 
@@ -505,6 +514,7 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
     // fallback to the other API
     try
     {
+        console.log(countryCode, zipCode, latitude, longitude, calculationMethodId, asrMethodId);
         const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${zipCode}&latitude=${latitude}&longitude=${longitude}&method=${calculationMethodId}&juristic=${asrMethodId}&time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
@@ -593,11 +603,15 @@ export async function displayTimes(dailyPrayerTimes)
                 {
                     div.classList.add("prayed");
                     await saveToStorage("isPrayed", true);
+                    IS_PRAYED = true;
+                    await updatePrayerTimeBadge();
                 }
                 else
                 {
                     div.classList.remove("prayed");
                     await saveToStorage("isPrayed", false);
+                    IS_PRAYED = false;
+                    await updatePrayerTimeBadge();
                 }
             });
         }
@@ -662,7 +676,7 @@ export function saveToStorage(keyOrObject, value)
             else
             {
                 const savedKeys = Object.keys(data);
-                console.log(`Saved successfully to chrome storage: ${savedKeys.join(", ")}`);
+                console.log(`Successfully saved "${savedKeys.join(", ")}" to chrome storage`);
                 resolve(data);
             }
         });
