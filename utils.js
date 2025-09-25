@@ -43,6 +43,9 @@ export const ASR_JURISDICTION_METHOD_IDS = {
     1: "Hanafi",
 };
 export const BLACK = "#000000";
+export const RED = "#ef7272";
+export const BLUE = "#72cbef";
+export const GREEN = "#72efb3";
 export const LIGHT_RED = "#ffbaba";
 export const LIGHT_BLUE = "#baebff";
 export const LIGHT_GREEN = "#baffde";
@@ -129,7 +132,7 @@ export async function updatePrayerTimeBadge()
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = IS_PRAYED ? LIGHT_GREEN : LIGHT_RED;
+        const backgroundColor = IS_PRAYED ? GREEN : RED;
         if (badgeBackgroundColor !== backgroundColor)
         {
             setBadgeBackgroundColor(backgroundColor);
@@ -146,7 +149,7 @@ export async function updatePrayerTimeBadge()
             badgeTextColor = textColor;
         }
 
-        const backgroundColor = IS_PRAYED ? LIGHT_GREEN : LIGHT_BLUE;
+        const backgroundColor = IS_PRAYED ? GREEN : BLUE;
         if (badgeBackgroundColor !== backgroundColor)
         {
             setBadgeBackgroundColor(backgroundColor);
@@ -552,7 +555,7 @@ export function getCurrentPrayerIndex(dailyPrayerTimes)
 export async function displayTimes(dailyPrayerTimes)
 {
     const storage = await getFromStorage(["isPrayed"]);
-    const isPrayed = storage.isPrayed;
+    const { isPrayed } = storage;
 
     const gridContainer = document.querySelector(".grid-container");
     const currentPrayerIndex = getCurrentPrayerIndex(dailyPrayerTimes);
@@ -560,7 +563,7 @@ export async function displayTimes(dailyPrayerTimes)
     // Clear old "current-prayer" marker
     document.querySelectorAll("#current-prayer").forEach(el => el.removeAttribute("id"));
 
-    PRAYER_NAMES.forEach((name, i) =>
+    PRAYER_NAMES.forEach(async (name, i) =>
     {
         let div = gridContainer.querySelectorAll(".prayer")[i];
 
@@ -596,6 +599,8 @@ export async function displayTimes(dailyPrayerTimes)
             div.id = "current-prayer";
             if (isPrayed) div.classList.add("prayed");
             else div.classList.remove("prayed");
+            const badgeBackgroundColor = rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
+            div.style.backgroundColor = badgeBackgroundColor === RED ? LIGHT_RED : badgeBackgroundColor === BLUE ? LIGHT_BLUE : LIGHT_GREEN;
 
             div.addEventListener("click", async () =>
             {
@@ -613,6 +618,9 @@ export async function displayTimes(dailyPrayerTimes)
                     IS_PRAYED = false;
                     await updatePrayerTimeBadge();
                 }
+
+                const badgeBackgroundColor = rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
+                div.style.backgroundColor = badgeBackgroundColor === RED ? LIGHT_RED : badgeBackgroundColor === BLUE ? LIGHT_BLUE : LIGHT_GREEN;
             });
         }
     });
