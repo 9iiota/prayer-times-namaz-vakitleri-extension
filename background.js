@@ -14,7 +14,6 @@ chrome.runtime.onInstalled.addListener(async () =>
 });
 chrome.runtime.onStartup.addListener(async () =>
 {
-    await utils.populateStorage();
     utils.startPrayerTimeBadgeTask();
 });
 
