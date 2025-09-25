@@ -226,8 +226,12 @@ export async function fetchNominatimSearch(query)
     return scheduleNominatimRequest(async () =>
     {
         const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`,
-            { headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" } }
+            `https://nominatim.openstreetmap.org/search
+            ?format=json
+            &q=${encodeURIComponent(query)}
+            &addressdetails=1
+            &limit=5`,
+            { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
         );
         if (!res.ok) throw new Error("Failed to fetch search results");
         return res.json();
@@ -239,8 +243,12 @@ export async function fetchZipAndUpdate(place, parameters)
     return scheduleNominatimRequest(async () =>
     {
         const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${place.lat}&lon=${place.lon}&addressdetails=1`,
-            { headers: { "User-Agent": "PrayerTimesExtension/1.0 (GitHub: 9iiota)" } }
+            `https://nominatim.openstreetmap.org/reverse
+            ?format=json
+            &lat=${encodeURIComponent(place.lat)}
+            &lon=${encodeURIComponent(place.lon)}
+            &addressdetails=1`,
+            { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
         );
         const data = await res.json();
 
@@ -479,7 +487,7 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
             const cityId = await retrieveCityId(countryId, city);
             if (!cityId) throw new Error('No cities found for country');
 
-            const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${cityId}`);
+            const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
             if (!res.ok) throw new Error('Network response not ok');
             const htmlText = await res.text();
 
@@ -518,7 +526,15 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
     try
     {
         console.log(countryCode, zipCode, latitude, longitude, calculationMethodId, asrMethodId);
-        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${countryCode}&zipcode=${zipCode}&latitude=${latitude}&longitude=${longitude}&method=${calculationMethodId}&juristic=${asrMethodId}&time_format=0`);
+        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times
+            ?show_entire_month
+            &country=${encodeURIComponent(countryCode)}
+            &zipcode=${encodeURIComponent(zipCode)}
+            &latitude=${encodeURIComponent(latitude)}
+            &longitude=${encodeURIComponent(longitude)}
+            &method=${encodeURIComponent(calculationMethodId)}
+            &juristic=${encodeURIComponent(asrMethodId)}
+            &time_format=0`);
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
 
@@ -736,7 +752,10 @@ export function getTimeDifference(startTime, endTime)
 export async function retrieveCityId(countryId, city)
 {
     // Fetch the country/state list
-    const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${countryId}&Culture=en-US`);
+    const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList
+        ?ChangeType=country
+        &CountryId=${encodeURIComponent(countryId)}
+        &Culture=en-US`);
     if (!res.ok) throw new Error('Network response not ok');
     const json = await res.json();
 
@@ -754,7 +773,11 @@ export async function retrieveCityId(countryId, city)
         const bestStateMatch = fuzzySearch(city, states)?.[0];
         if (!bestStateMatch) return null;
 
-        const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${countryId}&StateId=${bestStateMatch.id}&Culture=en-US`);
+        const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList
+            ?ChangeType=state
+            &CountryId=${encodeURIComponent(countryId)}
+            &StateId=${encodeURIComponent(bestStateMatch.id)}
+            &Culture=en-US`);
         if (!stateRes.ok) throw new Error('Network response not ok');
         const stateJson = await stateRes.json();
         citiesList = stateJson.StateRegionList || [];
