@@ -1,5 +1,13 @@
 import * as utils from "./utils.js";
 
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
+{
+    if (msg.action === "updatePrayerTimes")
+    {
+        // TODO update prayer times in popup if open
+    }
+});
+
 class PopupController
 {
     constructor()

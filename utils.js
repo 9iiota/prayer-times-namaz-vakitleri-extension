@@ -1,4 +1,4 @@
-import { countryMap } from "./countryMap.js";
+import { countryMap } from "./country-map.js";
 
 export const COLORS =
 {
@@ -135,12 +135,12 @@ export async function updatePrayerTimeBadge()
     if (timeDifference.includes("m"))
     {
         // Less than an hour remaining
-        backgroundColor = IS_PRAYED ? GREEN : RED;
+        backgroundColor = IS_PRAYED ? COLORS.GREEN : COLORS.RED;
     }
     else
     {
         // More than an hour remaining
-        backgroundColor = IS_PRAYED ? GREEN : BLUE;
+        backgroundColor = IS_PRAYED ? COLORS.GREEN : COLORS.BLUE;
     }
 
     if (badgeBackgroundColor !== backgroundColor)
@@ -149,7 +149,7 @@ export async function updatePrayerTimeBadge()
         badgeBackgroundColor = backgroundColor;
     }
 
-    const textColor = backgroundColor === BLUE ? WHITE : BLACK;
+    const textColor = backgroundColor === COLORS.BLUE ? WHITE : BLACK;
     if (badgeTextColor !== textColor)
     {
         setBadgeTextColor(textColor);
@@ -600,7 +600,7 @@ export async function displayTimes(dailyPrayerTimes)
             if (isPrayed) div.classList.add("prayed");
             else div.classList.remove("prayed");
             const badgeBackgroundColor = rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
-            div.style.backgroundColor = badgeBackgroundColor === RED ? LIGHT_RED : badgeBackgroundColor === BLUE ? LIGHT_BLUE : LIGHT_GREEN;
+            div.style.backgroundColor = badgeBackgroundColor === COLORS.RED ? LIGHT_RED : badgeBackgroundColor === COLORS.BLUE ? LIGHT_BLUE : LIGHT_GREEN;
 
             div.addEventListener("click", async () =>
             {
@@ -620,7 +620,7 @@ export async function displayTimes(dailyPrayerTimes)
                 }
 
                 const badgeBackgroundColor = rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
-                div.style.backgroundColor = badgeBackgroundColor === RED ? LIGHT_RED : badgeBackgroundColor === BLUE ? LIGHT_BLUE : LIGHT_GREEN;
+                div.style.backgroundColor = badgeBackgroundColor === COLORS.RED ? LIGHT_RED : badgeBackgroundColor === COLORS.BLUE ? LIGHT_BLUE : LIGHT_GREEN;
             });
         }
     });
