@@ -1,7 +1,18 @@
 import * as utils from "./utils.js";
 
+class PopupController
+{
+    constructor()
+    {
+
+    }
+}
+
+
 document.addEventListener("DOMContentLoaded", async () =>
 {
+    // new PopupController();
+
     const storage = await utils.getFromStorage(["parameters", "prayerTimes"]);
     let { parameters, prayerTimes } = storage;
 

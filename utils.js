@@ -1,5 +1,13 @@
 import { countryMap } from "./countryMap.js";
 
+export const COLORS =
+{
+    GREEN: "#00FF00",
+    GRAY: "#808080",
+    BLUE: "#0000FF",
+    RED: "#FF0000",
+}
+
 let lastRequestTime = 0;
 let requestQueue = Promise.resolve();
 let NEXT_PRAYER_INDEX, PRAYER_TIMES, IS_PRAYED, badgeText, badgeTextColor, badgeBackgroundColor, taskId, taskIntervallMs;
@@ -44,9 +52,6 @@ export const ASR_JURISDICTION_METHOD_IDS = {
 };
 export const BLACK = "#000000";
 export const WHITE = "#ffffff";
-export const RED = "#eb6123";
-export const BLUE = "#0072bb";
-export const GREEN = "#7dc242";
 export const LIGHT_RED = "#ffbaba";
 export const LIGHT_BLUE = "#baebff";
 export const LIGHT_GREEN = "#baffde";
