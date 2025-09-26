@@ -114,6 +114,8 @@ export async function updatePrayerTimeBadge()
     else if (NEXT_PRAYER_INDEX !== nextPrayerIndex)
     {
         NEXT_PRAYER_INDEX = nextPrayerIndex;
+        await saveToStorage("isPrayed", false);
+        IS_PRAYED = false;
         displayTimes(todayTimes);
     }
 
