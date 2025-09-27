@@ -261,11 +261,15 @@ export async function fetchZipAndUpdate(place, parameters)
 {
     return scheduleNominatimRequest(async () =>
     {
-        const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(place.lat)}&lon=${encodeURIComponent(place.lon)}&addressdetails=1`,
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?
+            format=json&
+            lat=${encodeURIComponent(place.lat)}&
+            lon=${encodeURIComponent(place.lon)}&
+            addressdetails=1`,
             { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
         );
-        const data = await res.json();
+        const data = await response.json();
 
         const zipCode = data.address.postcode?.split(" ")[0] ?? "";
 
@@ -291,7 +295,8 @@ export function renderLocationResults(data, locationSpan, locationResults, param
         const noRes = document.createElement("div");
         noRes.textContent = "No results found";
         locationResults.appendChild(noRes);
-    } else
+    }
+    else
     {
         data.forEach(place =>
         {
@@ -354,7 +359,7 @@ export function scheduleNominatimRequest(fn)
     requestQueue = requestQueue.then(async () =>
     {
         const now = Date.now();
-        const wait = Math.max(0, 2000 - (now - lastRequestTime)); // enforce 2s
+        const wait = Math.max(0, 2000 - (now - lastRequestTime)); // Enforce 2s interval between requests
 
         if (wait > 0)
         {

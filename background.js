@@ -30,7 +30,7 @@ class BackgroundController
         // Listen for storage changes
         chrome.storage.onChanged.addListener(async (changes, area) =>
         {
-            if (area === 'sync')
+            if (area === 'local')
             {
                 if (changes.isPrayed)
                 {
@@ -293,11 +293,13 @@ chrome.alarms.onAlarm.addListener(() =>
 
 chrome.runtime.onInstalled.addListener(async () =>
 {
-    await utils.populateStorage();
-    utils.startPrayerTimeBadgeTask();
+    const backgroundController = new BackgroundController();
+    // await utils.populateStorage();
+    // utils.startPrayerTimeBadgeTask();
 });
 chrome.runtime.onStartup.addListener(async () =>
 {
-    utils.startPrayerTimeBadgeTask();
+    const backgroundController = new BackgroundController();
+    // utils.startPrayerTimeBadgeTask();
 });
 
