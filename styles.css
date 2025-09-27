@@ -74,9 +74,11 @@ body
     border-radius: var(--default-border-radius);
     padding: var(--default-vertical-padding) 60px var(--default-vertical-padding) 60px;
     text-align: center;
-    display: flex;
+    display: block;
+    /* TODO give choice of block or flex */
     gap: 16px;
     align-items: center;
+    justify-content: center;
 }
 
 /* Sun time can't shown as prayed */
@@ -85,15 +87,9 @@ body
     pointer-events: none;
 }
 
-.prayer>div
-{
-    flex: 1;
-}
-
-.prayer>div>span
+.prayer>span
 {
     display: block;
-    /* TODO: make this optional */
 }
 
 .time-adjust

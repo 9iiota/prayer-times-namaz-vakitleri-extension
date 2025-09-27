@@ -22,8 +22,6 @@ class BackgroundController
             },
             prayerTimes: null
         }
-
-        // Initialize storage
         this.initializeStorage();
 
         // TODO Start badge task if prayerTimes exist
@@ -36,9 +34,8 @@ class BackgroundController
             {
                 if (changes.isPrayed)
                 {
-                    this.storage.isPrayed = changes.isPrayed.newValue;
-
                     // Update badge background color if isPrayed changed
+                    this.storage.isPrayed = changes.isPrayed.newValue;
                     if (changes.isPrayed.newValue)
                     {
                         // Set badge background color to green if isPrayed is true
@@ -54,7 +51,7 @@ class BackgroundController
                         }
 
                         // If current prayer is Sun (index = 1), set badge background color to gray
-                        const currentPrayerIndex = this.getCurrentPrayerIndex(todayPrayerTimes);
+                        const currentPrayerIndex = utils.getCurrentPrayerIndex(todayPrayerTimes);
                         if (currentPrayerIndex === 1)
                         {
                             chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
@@ -98,16 +95,13 @@ class BackgroundController
                 else if (changes.parameters)
                 {
                     this.storage.parameters = changes.parameters.newValue;
-
-                    // TODO Update prayer times if parameters changed
                     this.fetchAndStorePrayerTimes(this.storage.parameters);
                 }
                 else if (changes.prayerTimes)
                 {
                     // Update prayer times in popup if open
                     this.storage.prayerTimes = changes.prayerTimes.newValue;
-
-                    chrome.runtime.sendMessage({ action: "updatePrayerTimes" });
+                    chrome.runtime.sendMessage({ action: "updatePrayerTimes", data: this.storage.prayerTimes });
                 }
             }
         });
@@ -154,27 +148,9 @@ class BackgroundController
         }
     }
 
-    getCurrentTimeFormatted(extraMinutes = 0)
-    {
-        // Extra minutes can be added to current time for testing purposes
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + extraMinutes);
-
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
-
-    getCurrentPrayerIndex(todayPrayerTimes)
-    {
-        const currentTime = this.getCurrentTimeFormatted();
-        const passedTimes = todayPrayerTimes.times.filter(time => time <= currentTime);
-        return passedTimes.length - 1; // Returns -1 if no prayers have passed yet
-    }
-
     getTimeFromNowBadgeFormatted(endTimeFormatted)
     {
-        const startTimeFormatted = this.getCurrentTimeFormatted();
+        const startTimeFormatted = utils.getCurrentTimeFormatted();
         const [hours1, minutes1] = startTimeFormatted.split(':').map(Number);
         const [hours2, minutes2] = endTimeFormatted.split(':').map(Number);
 
@@ -272,6 +248,31 @@ class BackgroundController
         try
         {
             // TODO continue from here
+            const response = await fetch(
+                `https://www.islamicfinder.us/index.php/api/prayer_times?
+                show_entire_month&
+                country=${encodeURIComponent(countryCode)}&
+                zipcode=${encodeURIComponent(zipCode)}&
+                latitude=${encodeURIComponent(latitude)}&
+                longitude=${encodeURIComponent(longitude)}&
+                method=${encodeURIComponent(calculationMethodId)}&
+                juristic=${encodeURIComponent(asrMethodId)}&
+                time_format=0`
+            );
+            if (!response.ok) throw new Error(`Failed to fetch prayer times from API. Status: ${response.status}`);
+            const json = await response.json();
+
+            const todayStr = new Date().toISOString().split("T")[0];
+            prayerTimes = Object.entries(json.results).map(([date, times]) => ({
+                date: date.replace(/-(\d)$/, "-0$1"), // Pad single digit days with leading zero
+                times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
+            })).filter(entry => entry.date >= todayStr);
+
+            if (prayerTimes.length === 0) throw new Error('No prayer times found from API.');
+
+            await chrome.storage.local.set({ prayerTimes });
+            utils.timeLog('Fetched and stored prayer times from API:', prayerTimes);
+            return;
         }
         catch (error)
         {

@@ -1,11 +1,57 @@
 import { countryMap } from "./country-map.js";
 
+export const ASR_JURISDICTION_METHOD_IDS =
+{
+    0: "Shafi, Hanbali, Maliki",
+    1: "Hanafi",
+}
 export const COLORS =
 {
     GREEN: "#00FF00",
     GRAY: "#808080",
     BLUE: "#0000FF",
     RED: "#FF0000",
+    LIGHT_GREEN: "#baffde",
+    LIGHT_BLUE: "#baebff",
+    LIGHT_RED: "#ffbaba",
+
+};
+export const PRAYER_CALCULATION_METHOD_IDS =
+{
+    0: "Jafari - Ithna Ashari",
+    1: "Karachi - University of Islamic Sciences",
+    2: "ISNA - Islamic Society of North America",
+    3: "MWL - Muslim World League",
+    4: "Mecca - Umm al-Qura",
+    5: "Egyptian General Authority of Survey",
+    7: "University of Tehran - Institute of Geophysics",
+    8: "Algerian Minister of Religious Affairs and Wakfs",
+    9: "Gulf 90 Minutes Fixed Isha",
+    10: "Egyptian General Authority of Survey (Bis)",
+    11: "UOIF - Union Des Organisations Islamiques De France",
+    12: "Sistem Informasi Hisab Rukyat Indonesia",
+    13: "Diyanet İşleri Başkanlığı",
+    14: "Germany Custom",
+    15: "Russia Custom",
+};
+export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+export function getCurrentTimeFormatted(extraMinutes = 0)
+{
+    // Extra minutes can be added to current time for testing purposes
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + extraMinutes);
+
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+export function getCurrentPrayerIndex(todayPrayerTimes)
+{
+    const currentTime = getCurrentTimeFormatted();
+    const passedTimes = todayPrayerTimes.times.filter(time => time <= currentTime);
+    return passedTimes.length - 1; // Returns -1 if no prayers have passed yet
 }
 
 let lastRequestTime = 0;
@@ -27,28 +73,6 @@ export const DEFAULT_STORAGE_VALUES =
         city: null
     },
     isPrayed: false,
-};
-export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
-export const PRAYER_CALCULATION_METHOD_IDS = {
-    0: "Jafari - Ithna Ashari",
-    1: "Karachi - University of Islamic Sciences",
-    2: "ISNA - Islamic Society of North America",
-    3: "MWL - Muslim World League",
-    4: "Mecca - Umm al-Qura",
-    5: "Egyptian General Authority of Survey",
-    7: "University of Tehran - Institute of Geophysics",
-    8: "Algerian Minister of Religious Affairs and Wakfs",
-    9: "Gulf 90 Minutes Fixed Isha",
-    10: "Egyptian General Authority of Survey (Bis)",
-    11: "UOIF - Union Des Organisations Islamiques De France",
-    12: "Sistem Informasi Hisab Rukyat Indonesia",
-    13: "Diyanet İşleri Başkanlığı",
-    14: "Germany Custom",
-    15: "Russia Custom",
-};
-export const ASR_JURISDICTION_METHOD_IDS = {
-    0: "Shafi, Hanbali, Maliki",
-    1: "Hanafi",
 };
 export const BLACK = "#000000";
 export const WHITE = "#ffffff";
@@ -518,7 +542,17 @@ export async function fetchPrayerTimes(countryCode = null, zipCode = null, latit
     try
     {
         console.log(countryCode, zipCode, latitude, longitude, calculationMethodId, asrMethodId);
-        const res = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(countryCode)}&zipcode=${encodeURIComponent(zipCode)}&latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&method=${encodeURIComponent(calculationMethodId)}&juristic=${encodeURIComponent(asrMethodId)}&time_format=0`);
+        const res = await fetch(
+            `https://www.islamicfinder.us/index.php/api/prayer_times?
+            show_entire_month&
+            country=${encodeURIComponent(countryCode)}&
+            zipcode=${encodeURIComponent(zipCode)}&
+            latitude=${encodeURIComponent(latitude)}&
+            longitude=${encodeURIComponent(longitude)}&
+            method=${encodeURIComponent(calculationMethodId)}&
+            juristic=${encodeURIComponent(asrMethodId)}&
+            time_format=0`
+        );
         if (!res.ok) throw new Error('Network response not ok');
         const json = await res.json();
 
@@ -545,13 +579,6 @@ export function getPrayerTimesByDate(prayerTimes, date)
     return prayerTimes.find(entry => entry.date === dateStr);
 }
 
-export function getCurrentPrayerIndex(dailyPrayerTimes)
-{
-    const currentTime = getCurrentTimeFormatted();
-    const passedTimes = dailyPrayerTimes.times.filter(time => time <= currentTime);
-    return dailyPrayerTimes.times.indexOf(passedTimes.at(-1));
-}
-
 export async function displayTimes(dailyPrayerTimes)
 {
     const storage = await getFromStorage(["isPrayed"]);
@@ -574,10 +601,6 @@ export async function displayTimes(dailyPrayerTimes)
             div.className = "prayer";
             gridContainer.appendChild(div);
 
-            const prayerContainer = document.createElement("div");
-            prayerContainer.className = "prayer-container";
-            div.appendChild(prayerContainer);
-
             const nameSpan = document.createElement("span");
             nameSpan.className = "prayer-name";
             nameSpan.textContent = name;
@@ -585,8 +608,8 @@ export async function displayTimes(dailyPrayerTimes)
             const timeSpan = document.createElement("span");
             timeSpan.className = "prayer-time";
 
-            prayerContainer.appendChild(nameSpan);
-            prayerContainer.appendChild(timeSpan);
+            div.appendChild(nameSpan);
+            div.appendChild(timeSpan);
         }
 
         // Update time
@@ -626,23 +649,11 @@ export async function displayTimes(dailyPrayerTimes)
     });
 }
 
-export function getCurrentTimeFormatted(extraMinutes = 0)
-{
-    const now = new Date();
-    // Add extraMinutes properly
-    now.setMinutes(now.getMinutes() + extraMinutes);
-
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-
-    return `${hours}:${minutes}`;
-}
-
 export function getFromStorage(keys)
 {
     return new Promise((resolve, reject) =>
     {
-        chrome.storage.sync.get(keys, (storage) =>
+        chrome.storage.local.get(keys, (storage) =>
         {
             if (chrome.runtime.lastError)
             {
@@ -674,7 +685,7 @@ export function saveToStorage(keyOrObject, value)
             data = { [keyOrObject]: value };
         }
 
-        chrome.storage.sync.set(data, () =>
+        chrome.storage.local.set(data, () =>
         {
             if (chrome.runtime.lastError)
             {
@@ -792,7 +803,7 @@ export function fuzzySearch(query, options, threshold = 0.3)
 
 export async function populateStorage()
 {
-    // chrome.storage.sync.clear();
+    // chrome.storage.local.clear();
     try
     {
         const keys = Object.keys(DEFAULT_STORAGE_VALUES);
@@ -809,7 +820,7 @@ export async function populateStorage()
 
         if (Object.keys(toSet).length > 0)
         {
-            await chrome.storage.sync.set(toSet);
+            await chrome.storage.local.set(toSet);
             timeLog(`Populated default storage values`);
         }
         else
