@@ -1,28 +1,10 @@
 import * as utils from "./utils.js";
-import { countryMap } from "./country-map.js";
 
 class BackgroundController
 {
-    constructor()
+    constructor(storage)
     {
-        this.storage =
-        {
-            isPrayed: false,
-            parameters:
-            {
-                countryCode: null,
-                zipCode: null,
-                latitude: null,
-                longitude: null,
-                calculationMethodId: 13,
-                asrMethodId: 0,
-                country: null,
-                state: null,
-                city: null
-            },
-            prayerTimes: null
-        }
-        this.initializeStorage();
+        this.storage = storage;
 
         // TODO Start badge task if prayerTimes exist
         // this.startBadgeTask();
@@ -95,34 +77,35 @@ class BackgroundController
                 else if (changes.parameters)
                 {
                     this.storage.parameters = changes.parameters.newValue;
-                    this.fetchAndStorePrayerTimes(this.storage.parameters);
+                    chrome.runtime.sendMessage({ action: "parametersChanged", data: this.storage.parameters });
+                    // utils.fetchAndStorePrayerTimes(this.storage.parameters);
                 }
                 else if (changes.prayerTimes)
                 {
                     // Update prayer times in popup if open
                     this.storage.prayerTimes = changes.prayerTimes.newValue;
-                    chrome.runtime.sendMessage({ action: "updatePrayerTimes", data: this.storage.prayerTimes });
+                    // chrome.runtime.sendMessage({ action: "updatePrayerTimes", data: this.storage.prayerTimes });
                 }
             }
         });
     }
 
-    async initializeStorage()
+    static async init()
     {
         try
         {
-            const keys = Object.keys(this.storage);
+            const keys = Object.keys(utils.STORAGE_DEFAULTS);
             const existing = await chrome.storage.local.get(keys);
 
             // If existing already has a value for that key, use it
             // Otherwise, fall back to the default value in this.defaultStorageValues
             const merged = Object.fromEntries(
-                keys.map(key => [key, existing[key] ?? this.storage[key]])
+                keys.map(key => [key, existing[key] ?? utils.STORAGE_DEFAULTS[key]])
             );
 
-            this.storage = merged;
             await chrome.storage.local.set(merged);
             utils.timeLog('Initialized storage with default values:', merged);
+            return new BackgroundController(merged);
         }
         catch (error)
         {
@@ -138,7 +121,7 @@ class BackgroundController
             if (storage.prayerTimes)
             {
                 const dateStr = date.toISOString().split('T')[0];
-                return storage.prayerTimes[dateStr] || null;
+                return storage.prayerTimes.filter(pt => pt.date === dateStr)[0] || null;
             }
         }
         catch (error)
@@ -187,102 +170,7 @@ class BackgroundController
         const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
         return `${diffHours}:${diffMinutes.toString().padStart(2, '0')}`;
     }
-
-    async fetchAndStorePrayerTimes(parameters)
-    {
-        // TODO
-        let prayerTimes = [];
-        // Try to scrape from https://namazvakitleri.diyanet.gov.tr/ first
-        // because the API times are usually off by a few minutes compared to the official site
-        if (parameters.calculationMethodId === 13
-            && parameters.asrMethodId === 0
-            && parameters.country
-            && parameters.city
-        )
-            try
-            {
-                utils.timeLog('Fetching prayer times from official site...');
-                const countryId = Object.keys(countryMap).find(key => countryMap[key] === parameters.country);
-                if (!countryId) throw new Error(`Country not found in countryMap: ${parameters.country}`);
-
-                // TODO use state if available
-
-                const cityId = await utils.retrieveCityId(countryId, parameters.city);
-                if (!cityId) throw new Error(`City not found: ${parameters.city} in country: ${parameters.country}`);
-
-                const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
-                if (!response.ok) throw new Error(`Failed to fetch prayer times from official site. Status: ${response.status}`);
-                const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
-                days.forEach(day =>
-                {
-                    const children = day.children;
-                    const dateStr = children[0].textContent.trim();
-                    const [d, m, y] = dateStr.split(".");
-                    const date = new Date(y, m - 1, d, 12);
-
-                    const timeTds = Array.from(children).slice(2);
-                    const times = timeTds.map(cell => cell.textContent.trim());
-
-                    prayerTimes.push({
-                        date: date.toISOString().split("T")[0],
-                        times
-                    });
-                });
-
-                if (prayerTimes.length === 0) throw new Error('No prayer times found on the official site.');
-
-                await chrome.storage.local.set({ prayerTimes });
-                utils.timeLog('Fetched and stored prayer times from official site:', prayerTimes);
-                return;
-            }
-            catch (error)
-            {
-                console.error('Error fetching prayer times from official site:', error);
-            }
-
-        // If scraping from official site failed, fall back to using the API
-        try
-        {
-            // TODO continue from here
-            const response = await fetch(
-                `https://www.islamicfinder.us/index.php/api/prayer_times?
-                show_entire_month&
-                country=${encodeURIComponent(countryCode)}&
-                zipcode=${encodeURIComponent(zipCode)}&
-                latitude=${encodeURIComponent(latitude)}&
-                longitude=${encodeURIComponent(longitude)}&
-                method=${encodeURIComponent(calculationMethodId)}&
-                juristic=${encodeURIComponent(asrMethodId)}&
-                time_format=0`
-            );
-            if (!response.ok) throw new Error(`Failed to fetch prayer times from API. Status: ${response.status}`);
-            const json = await response.json();
-
-            const todayStr = new Date().toISOString().split("T")[0];
-            prayerTimes = Object.entries(json.results).map(([date, times]) => ({
-                date: date.replace(/-(\d)$/, "-0$1"), // Pad single digit days with leading zero
-                times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
-            })).filter(entry => entry.date >= todayStr);
-
-            if (prayerTimes.length === 0) throw new Error('No prayer times found from API.');
-
-            await chrome.storage.local.set({ prayerTimes });
-            utils.timeLog('Fetched and stored prayer times from API:', prayerTimes);
-            return;
-        }
-        catch (error)
-        {
-            console.error('Error fetching prayer times from API:', error);
-            return;
-        }
-    }
 }
-
-// const backgroundController = new BackgroundController();
 
 // Used to keep the service worker alive
 chrome.alarms.create({ periodInMinutes: .4 })
@@ -293,13 +181,14 @@ chrome.alarms.onAlarm.addListener(() =>
 
 chrome.runtime.onInstalled.addListener(async () =>
 {
-    const backgroundController = new BackgroundController();
+    // chrome.storage.local.clear();
+    const backgroundController = await BackgroundController.init();
     // await utils.populateStorage();
     // utils.startPrayerTimeBadgeTask();
 });
 chrome.runtime.onStartup.addListener(async () =>
 {
-    const backgroundController = new BackgroundController();
+    const backgroundController = await BackgroundController.init();
     // utils.startPrayerTimeBadgeTask();
 });
 
