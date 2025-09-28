@@ -7,9 +7,13 @@ class BackgroundController
         this.storage = storage;
         this.todayPrayerTimes = null;
         this.nextPrayerIndex = null;
+        this.badgeText = "";
+        this.badgeTextColor = "";
+        this.badgeBackgroundColor = "";
+        this.badgeTaskIntervalMs = 0;
+        this.badgeTaskId = null;
 
-        this.updateBadge();
-        // this.startBadgeTask(); // TODO start badge task if prayer times exist
+        this.startBadgeTask();
 
         chrome.storage.onChanged.addListener(async (changes, area) =>
         {
@@ -29,6 +33,20 @@ class BackgroundController
                     default:
                         break;
                 }
+            }
+        });
+
+        // Listen for messages from popup.js
+        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
+        {
+            switch (msg.action)
+            {
+                case "updateBadge":
+                    this.storage.isPrayed = msg.data;
+                    this.updateBadge();
+                    break;
+                default:
+                    break;
             }
         });
     }
@@ -93,6 +111,111 @@ class BackgroundController
             this.storage.isPrayed = false;
             chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes });
         }
+
+        const currentTimeFormatted = utils.getCurrentTimeFormatted();
+        const timeDifference = this.getTimeDifference(currentTimeFormatted, nextPrayerTime);
+        if (this.badgeText !== timeDifference)
+        {
+            this.badgeText = timeDifference;
+            chrome.action.setBadgeText({ text: this.badgeText });
+            utils.timeLog('Updated badge text to', this.badgeText);
+        }
+
+        let badgeTextColor = utils.COLORS.BLACK;
+        if (this.storage.isPrayed)
+        {
+            // Set badge background color to green if isPrayed is true
+            chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
+            this.badgeBackgroundColor = utils.COLORS.GREEN;
+            utils.timeLog('Updated badge background color to', utils.COLORS.GREEN);
+        }
+        else
+        {
+            let backgroundColor;
+            if (timeDifference.includes("m"))
+            {
+                // Less than an hour remaining
+                backgroundColor = utils.COLORS.RED;
+            }
+            else
+            {
+                // More than an hour remaining
+                backgroundColor = utils.COLORS.BLUE;
+                badgeTextColor = utils.COLORS.WHITE;
+            }
+
+            if (this.badgeBackgroundColor !== backgroundColor)
+            {
+                chrome.action.setBadgeBackgroundColor({ color: backgroundColor });
+                this.badgeBackgroundColor = backgroundColor;
+                utils.timeLog('Updated badge background color to', backgroundColor);
+            }
+        }
+
+        if (this.badgeTextColor !== badgeTextColor)
+        {
+            chrome.action.setBadgeTextColor({ color: badgeTextColor });
+            this.badgeTextColor = badgeTextColor;
+            utils.timeLog('Updated badge text color to', badgeTextColor);
+        }
+
+        if (timeDifference.includes("s"))
+        {
+            this.badgeTaskIntervalMs = 1000; // Set to 1 second
+        }
+        else
+        {
+            this.badgeTaskIntervalMs = this.msUntilNextMinute() + 1000; // Add a second to ensure we are in the next minute
+        }
+    }
+
+    msUntilNextMinute()
+    {
+        const now = new Date();
+        const seconds = now.getSeconds();
+        const milliseconds = now.getMilliseconds();
+
+        return (60 - seconds) * 1000 - milliseconds;
+    }
+
+    getTimeDifference(startTime, endTime)
+    {
+        // Convert HH:MM to total minutes
+        const [startH, startM] = startTime.split(':').map(Number);
+        const [endH, endM] = endTime.split(':').map(Number);
+
+        const totalStartMinutes = startH * 60 + startM;
+        const totalEndMinutes = endH * 60 + endM;
+
+        let timeDifferenceMinutes = totalEndMinutes - totalStartMinutes;
+
+        if (timeDifferenceMinutes === 1)
+        {
+            const secondsUntilNextMinute = msUntilNextMinute() / 1000;
+            return `${Math.ceil(secondsUntilNextMinute)}s`;
+        }
+        else if (timeDifferenceMinutes === 0)
+        {
+            return "0s";
+        }
+
+        // If the difference is negative, assume it's the next day
+        if (timeDifferenceMinutes < 0) timeDifferenceMinutes += 24 * 60;
+
+        const diffH = Math.floor(timeDifferenceMinutes / 60);
+        const diffM = timeDifferenceMinutes % 60;
+
+        // Pad with leading zero if needed
+        const pad = n => n.toString().padStart(2, '0');
+
+        return diffH === 0 ? `${diffM}m` : `${diffH}:${pad(diffM)}`;
+    }
+
+    async startBadgeTask()
+    {
+        if (this.badgeTaskId) clearTimeout(this.badgeTaskId);
+        await this.updateBadge();
+        this.badgeTaskId = setTimeout(() => this.startBadgeTask(), this.badgeTaskIntervalMs);
     }
 
     async onIsPrayedChanged(change)

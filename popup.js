@@ -88,7 +88,7 @@ class PopupController
         this.requestQueue = this.requestQueue.then(async () =>
         {
             const now = Date.now();
-            const wait = Math.max(0, 2000 - (now - this.lastRequestTime)); // Enforce 2s interval between requests
+            const wait = Math.max(0, utils.NOMINATIM_REQUEST_INTERVAL_MS - (now - this.lastRequestTime)); // Enforce 2s interval between requests
 
             if (wait > 0)
             {
@@ -343,7 +343,7 @@ class PopupController
                     await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
                     prayerContainer.classList.toggle("prayed");
                     utils.timeLog("Toggled isPrayed to:", this.storage.isPrayed);
-                    // TODO update badge
+                    chrome.runtime.sendMessage({ action: "updateBadge", data: this.storage.isPrayed });
                     const badgeBackgroundColor = this.rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
                     prayerContainer.style.backgroundColor = badgeBackgroundColor === utils.COLORS.RED ? utils.COLORS.LIGHT_RED : badgeBackgroundColor === utils.COLORS.BLUE ? utils.COLORS.LIGHT_BLUE : utils.COLORS.LIGHT_GREEN;
                 });
