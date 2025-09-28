@@ -5,86 +5,29 @@ class BackgroundController
     constructor(storage)
     {
         this.storage = storage;
+        this.todayPrayerTimes = null;
+        this.nextPrayerIndex = null;
 
-        // TODO Start badge task if prayerTimes exist
-        // this.startBadgeTask();
+        this.updateBadge();
+        // this.startBadgeTask(); // TODO start badge task if prayer times exist
 
-        // Listen for storage changes
         chrome.storage.onChanged.addListener(async (changes, area) =>
         {
             if (area === 'local')
             {
-                if (changes.isPrayed)
+                switch (changes)
                 {
-                    // Update badge background color if isPrayed changed
-                    this.storage.isPrayed = changes.isPrayed.newValue;
-                    if (changes.isPrayed.newValue)
-                    {
-                        // Set badge background color to green if isPrayed is true
-                        chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
-                    }
-                    else
-                    {
-                        const todayPrayerTimes = await this.getDatePrayerTimes();
-                        if (!todayPrayerTimes)
-                        {
-                            console.error('No prayer times found for today.');
-                            return;
-                        }
-
-                        // If current prayer is Sun (index = 1), set badge background color to gray
-                        const currentPrayerIndex = utils.getCurrentPrayerIndex(todayPrayerTimes);
-                        if (currentPrayerIndex === 1)
-                        {
-                            chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
-                            return;
-                        }
-                        else
-                        {
-                            // Else if time until next prayer is >= 1 hour, set badge background color to blue
-                            // Else set badge background color to red
-                            let timeUntilNextPrayer;
-                            if (currentPrayerIndex >= todayPrayerTimes.times.length - 1)
-                            {
-                                // If current prayer is the last one, get time until first prayer of next day
-                                const tomorrow = new Date();
-                                tomorrow.setDate(tomorrow.getDate() + 1);
-                                const tomorrowPrayerTimes = await this.getDatePrayerTimes(tomorrow);
-                                if (!tomorrowPrayerTimes)
-                                {
-                                    console.error('No prayer times found for tomorrow.');
-                                    return;
-                                }
-
-                                timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(tomorrowPrayerTimes.times[0]);
-                            }
-                            else
-                            {
-                                timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(todayPrayerTimes.times[currentPrayerIndex + 1]);
-                            }
-
-                            if (timeUntilNextPrayer.includes('h'))
-                            {
-                                chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.BLUE });
-                            }
-                            else
-                            {
-                                chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.RED });
-                            }
-                        }
-                    }
-                }
-                else if (changes.parameters)
-                {
-                    this.storage.parameters = changes.parameters.newValue;
-                    chrome.runtime.sendMessage({ action: "parametersChanged", data: this.storage.parameters });
-                    // utils.fetchAndStorePrayerTimes(this.storage.parameters);
-                }
-                else if (changes.prayerTimes)
-                {
-                    // Update prayer times in popup if open
-                    this.storage.prayerTimes = changes.prayerTimes.newValue;
-                    // chrome.runtime.sendMessage({ action: "updatePrayerTimes", data: this.storage.prayerTimes });
+                    case changes.isPrayed:
+                        this.onIsPrayedChanged(changes.isPrayed);
+                        break;
+                    case changes.parameters:
+                        this.onParametersChanged(changes.parameters);
+                        break;
+                    case changes.prayerTimes:
+                        this.onPrayerTimesChanged(changes.prayerTimes);
+                        break;
+                    default:
+                        break;
                 }
             }
         });
@@ -111,6 +54,121 @@ class BackgroundController
         {
             console.error('Error initializing storage:', error);
         }
+    }
+
+    async updateBadge()
+    {
+        if (!this.storage.prayerTimes || this.storage.prayerTimes.length === 0) throw new Error("No prayer times found in storage");
+
+        if (!this.todayPrayerTimes)
+        {
+            this.todayPrayerTimes = await this.getDatePrayerTimes();
+            if (!this.todayPrayerTimes) throw new Error("No prayer times found for today");
+        }
+
+        const nextPrayerIndex = utils.getCurrentPrayerIndex(this.todayPrayerTimes) + 1;
+        let nextPrayerTime;
+        if (nextPrayerIndex < this.todayPrayerTimes.times.length)
+        {
+            nextPrayerTime = this.todayPrayerTimes.times[nextPrayerIndex];
+        }
+        else
+        {
+            // If there is no next prayer time today, get the first prayer time of tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowPrayerTimes = await this.getDatePrayerTimes(tomorrow);
+            if (!tomorrowPrayerTimes) throw new Error("No prayer times found for tomorrow");
+            nextPrayerTime = tomorrowPrayerTimes.times[0];
+        }
+
+        if (this.nextPrayerIndex === null)
+        {
+            this.nextPrayerIndex = nextPrayerIndex;
+        }
+        else if (this.nextPrayerIndex !== nextPrayerIndex)
+        {
+            this.nextPrayerIndex = nextPrayerIndex;
+            await chrome.storage.local.set({ isPrayed: false });
+            this.storage.isPrayed = false;
+            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes });
+        }
+    }
+
+    async onIsPrayedChanged(change)
+    {
+        this.storage.isPrayed = change.newValue;
+        utils.timeLog('isPrayed changed from', change.oldValue, 'to', change.newValue);
+        if (change.newValue)
+        {
+            // Set badge background color to green if isPrayed is true
+            chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
+        }
+        else
+        {
+            const todayPrayerTimes = await this.getDatePrayerTimes();
+            if (!todayPrayerTimes)
+            {
+                console.error('No prayer times found for today.');
+                return;
+            }
+
+            // If current prayer is Sun (index = 1), set badge background color to gray
+            const currentPrayerIndex = utils.getCurrentPrayerIndex(todayPrayerTimes);
+            if (currentPrayerIndex === 1)
+            {
+                chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
+                return;
+            }
+            else
+            {
+                // Else if time until next prayer is >= 1 hour, set badge background color to blue
+                // Else set badge background color to red
+                let timeUntilNextPrayer;
+                if (currentPrayerIndex >= todayPrayerTimes.times.length - 1)
+                {
+                    // If current prayer is the last one, get time until first prayer of next day
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowPrayerTimes = await this.getDatePrayerTimes(tomorrow);
+                    if (!tomorrowPrayerTimes)
+                    {
+                        console.error('No prayer times found for tomorrow.');
+                        return;
+                    }
+
+                    timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(tomorrowPrayerTimes.times[0]);
+                }
+                else
+                {
+                    timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(todayPrayerTimes.times[currentPrayerIndex + 1]);
+                }
+
+                if (timeUntilNextPrayer.includes('h'))
+                {
+                    chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.BLUE });
+                }
+                else
+                {
+                    chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.RED });
+                }
+            }
+        }
+    }
+
+    async onParametersChanged(change)
+    {
+        this.storage.parameters = change.newValue;
+        utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
+
+        // Send message to popup to fetch new prayer times if open
+        chrome.runtime.sendMessage({ action: "parametersChanged", data: this.storage.parameters });
+    }
+
+    async onPrayerTimesChanged(change)
+    {
+        this.storage.prayerTimes = change.newValue;
+        utils.timeLog('prayerTimes changed.');
     }
 
     async getDatePrayerTimes(date = new Date())

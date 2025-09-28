@@ -14,9 +14,16 @@ class PopupController
         // Listen for messages from background.js
         chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
         {
-            if (msg.action === "parametersChanged")
+            switch (msg.action)
             {
-                this.onParametersChanged(msg.data);
+                case "parametersChanged":
+                    this.onParametersChanged(msg.data);
+                    break;
+                case "prayerChanged":
+                    this.displayPrayerTimes(msg.data);
+                    break;
+                default:
+                    break;
             }
         });
     }
