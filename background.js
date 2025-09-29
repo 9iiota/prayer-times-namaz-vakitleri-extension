@@ -10,24 +10,27 @@ class BackgroundController
         this.badgeText = "";
         this.badgeTextColor = "";
         this.badgeBackgroundColor = "";
-        this.badgeTaskIntervalMs = 0;
+        this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
         this.badgeTaskId = null;
 
-        this.startBadgeTask();
+        if (this.storage.prayerTimes)
+        {
+            this.startBadgeTask();
+        }
 
         chrome.storage.onChanged.addListener(async (changes, area) =>
         {
             if (area === 'local')
             {
-                switch (changes)
+                switch (Object.keys(changes)[0])
                 {
-                    case changes.isPrayed:
+                    case "isPrayed":
                         this.onIsPrayedChanged(changes.isPrayed);
                         break;
-                    case changes.parameters:
+                    case "parameters":
                         this.onParametersChanged(changes.parameters);
                         break;
-                    case changes.prayerTimes:
+                    case "prayerTimes":
                         this.onPrayerTimesChanged(changes.prayerTimes);
                         break;
                     default:
@@ -76,12 +79,20 @@ class BackgroundController
 
     async updateBadge()
     {
-        if (!this.storage.prayerTimes || this.storage.prayerTimes.length === 0) throw new Error("No prayer times found in storage");
+        if (!this.storage.prayerTimes || this.storage.prayerTimes.length === 0)
+        {
+            utils.timeLog("No prayer times found in storage");
+            return;
+        }
 
         if (!this.todayPrayerTimes)
         {
             this.todayPrayerTimes = await this.getDatePrayerTimes();
-            if (!this.todayPrayerTimes) throw new Error("No prayer times found for today");
+            if (!this.todayPrayerTimes)
+            {
+                utils.timeLog("No prayer times found for today");
+                return;
+            }
         }
 
         const nextPrayerIndex = utils.getCurrentPrayerIndex(this.todayPrayerTimes) + 1;
@@ -292,6 +303,7 @@ class BackgroundController
     {
         this.storage.prayerTimes = change.newValue;
         utils.timeLog('prayerTimes changed.');
+        this.startBadgeTask();
     }
 
     async getDatePrayerTimes(date = new Date())

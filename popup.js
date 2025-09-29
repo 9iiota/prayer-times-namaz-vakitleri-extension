@@ -330,22 +330,38 @@ class PopupController
             if (i === currentPrayerIndex)
             {
                 prayerContainer.id = "current-prayer";
-                this.storage.isPrayed ? prayerContainer.classList.add("prayed") : prayerContainer.classList.remove("prayed");
 
-                // Set background color based on badge background color
-                // This ensures consistency between popup and badge colors
-                const badgeBackgroundColor = this.rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
-                prayerContainer.style.backgroundColor = badgeBackgroundColor === utils.COLORS.RED ? utils.COLORS.LIGHT_RED : badgeBackgroundColor === utils.COLORS.BLUE ? utils.COLORS.LIGHT_BLUE : utils.COLORS.LIGHT_GREEN;
+                // Set background color based on isPrayed state
+                if (this.storage.isPrayed)
+                {
+                    prayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
+                }
+                else
+                {
+                    const badgeBackgroundColor = this.rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({}));
+                    prayerContainer.style.backgroundColor = badgeBackgroundColor === utils.COLORS.RED ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
+                }
 
                 prayerContainer.addEventListener("click", async () =>
                 {
+                    // Toggle isPrayed state and update background color
                     this.storage.isPrayed = !this.storage.isPrayed;
+                    if (this.storage.isPrayed)
+                    {
+                        prayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
+                    }
+                    else
+                    {
+                        const badgeText = await chrome.action.getBadgeText({});
+                        prayerContainer.style.backgroundColor = badgeText.includes("m") ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
+                    }
+
+                    // Store new isPrayed state in storage
                     await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
-                    prayerContainer.classList.toggle("prayed");
                     utils.timeLog("Toggled isPrayed to:", this.storage.isPrayed);
+
+                    // Notify background to update badge
                     chrome.runtime.sendMessage({ action: "updateBadge", data: this.storage.isPrayed });
-                    const badgeBackgroundColor = this.rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({})).toLowerCase();
-                    prayerContainer.style.backgroundColor = badgeBackgroundColor === utils.COLORS.RED ? utils.COLORS.LIGHT_RED : badgeBackgroundColor === utils.COLORS.BLUE ? utils.COLORS.LIGHT_BLUE : utils.COLORS.LIGHT_GREEN;
                 });
             }
         }

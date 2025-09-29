@@ -112,12 +112,13 @@ body
 #current-prayer
 {
     transition: background-color .2s, filter .2s;
+    background-color: #baebff;
 }
 
-#current-prayer.prayed
+/* #current-prayer.prayed
 {
     background-color: #baffde;
-}
+} */
 
 #current-prayer:hover
 {
