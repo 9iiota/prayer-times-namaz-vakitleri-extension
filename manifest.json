@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Prayer Times / Namaz Vakitleri",
     "description": "Display prayer times for your location.",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "action": {
         "default_popup": "popup.html"
     },
