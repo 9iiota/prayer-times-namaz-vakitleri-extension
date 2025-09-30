@@ -359,9 +359,6 @@ class PopupController
                     // Store new isPrayed state in storage
                     await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
                     utils.timeLog("Toggled isPrayed to:", this.storage.isPrayed);
-
-                    // Notify background to update badge
-                    chrome.runtime.sendMessage({ action: "updateBadge", data: this.storage.isPrayed });
                 });
             }
         }

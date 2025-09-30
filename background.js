@@ -8,7 +8,6 @@ class BackgroundController
         this.todayPrayerTimes = null;
         this.nextPrayerIndex = null;
         this.badgeText = "";
-        this.badgeTextColor = "";
         this.badgeBackgroundColor = "";
         this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
         this.badgeTaskId = null;
@@ -37,20 +36,6 @@ class BackgroundController
                     default:
                         break;
                 }
-            }
-        });
-
-        // Listen for messages from popup.js
-        chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
-        {
-            switch (msg.action)
-            {
-                case "updateBadge":
-                    this.storage.isPrayed = msg.data;
-                    this.updateBadge();
-                    break;
-                default:
-                    break;
             }
         });
     }
@@ -133,43 +118,7 @@ class BackgroundController
             utils.timeLog('Updated badge text to', this.badgeText);
         }
 
-        let badgeTextColor = utils.COLORS.BLACK;
-        if (this.storage.isPrayed)
-        {
-            // Set badge background color to green if isPrayed is true
-            chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
-            this.badgeBackgroundColor = utils.COLORS.GREEN;
-            utils.timeLog('Updated badge background color to', utils.COLORS.GREEN);
-        }
-        else
-        {
-            let backgroundColor;
-            if (timeDifference.includes("m"))
-            {
-                // Less than an hour remaining
-                backgroundColor = utils.COLORS.RED;
-            }
-            else
-            {
-                // More than an hour remaining
-                backgroundColor = utils.COLORS.BLUE;
-                badgeTextColor = utils.COLORS.WHITE;
-            }
-
-            if (this.badgeBackgroundColor !== backgroundColor)
-            {
-                chrome.action.setBadgeBackgroundColor({ color: backgroundColor });
-                this.badgeBackgroundColor = backgroundColor;
-                utils.timeLog('Updated badge background color to', backgroundColor);
-            }
-        }
-
-        if (this.badgeTextColor !== badgeTextColor)
-        {
-            chrome.action.setBadgeTextColor({ color: badgeTextColor });
-            this.badgeTextColor = badgeTextColor;
-            utils.timeLog('Updated badge text color to', badgeTextColor);
-        }
+        this.updateBadgeBackgroundColor(this.storage.isPrayed);
 
         if (timeDifference.includes("s"))
         {
@@ -230,65 +179,44 @@ class BackgroundController
         this.badgeTaskId = setTimeout(() => this.startBadgeTask(), this.badgeTaskIntervalMs);
     }
 
-    async onIsPrayedChanged(change)
+    async updateBadgeBackgroundColor(isPrayed)
     {
-        this.storage.isPrayed = change.newValue;
-        utils.timeLog('isPrayed changed from', change.oldValue, 'to', change.newValue);
-        if (change.newValue)
+        if (isPrayed)
         {
-            // Set badge background color to green if isPrayed is true
             chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
+            utils.timeLog('Set badge background color to', utils.COLORS.GREEN);
         }
         else
         {
-            const todayPrayerTimes = await this.getDatePrayerTimes();
-            if (!todayPrayerTimes)
-            {
-                console.error('No prayer times found for today.');
-                return;
-            }
-
-            // If current prayer is Sun (index = 1), set badge background color to gray
-            const currentPrayerIndex = utils.getCurrentPrayerIndex(todayPrayerTimes);
+            const currentPrayerIndex = utils.getCurrentPrayerIndex(this.todayPrayerTimes);
             if (currentPrayerIndex === 1)
             {
                 chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
-                return;
+                utils.timeLog('Set badge background color to', utils.COLORS.GRAY);
             }
             else
             {
-                // Else if time until next prayer is >= 1 hour, set badge background color to blue
-                // Else set badge background color to red
-                let timeUntilNextPrayer;
-                if (currentPrayerIndex >= todayPrayerTimes.times.length - 1)
+                const badgeText = await chrome.action.getBadgeText({});
+                let backgroundColor;
+                if (badgeText.includes("m"))
                 {
-                    // If current prayer is the last one, get time until first prayer of next day
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    const tomorrowPrayerTimes = await this.getDatePrayerTimes(tomorrow);
-                    if (!tomorrowPrayerTimes)
-                    {
-                        console.error('No prayer times found for tomorrow.');
-                        return;
-                    }
-
-                    timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(tomorrowPrayerTimes.times[0]);
+                    backgroundColor = utils.COLORS.RED;
                 }
                 else
                 {
-                    timeUntilNextPrayer = this.getTimeFromNowBadgeFormatted(todayPrayerTimes.times[currentPrayerIndex + 1]);
+                    backgroundColor = utils.COLORS.LIGHT_BLUE;
                 }
-
-                if (timeUntilNextPrayer.includes('h'))
-                {
-                    chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.BLUE });
-                }
-                else
-                {
-                    chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.RED });
-                }
+                chrome.action.setBadgeBackgroundColor({ color: backgroundColor });
+                utils.timeLog('Set badge background color to', backgroundColor);
             }
         }
+    }
+
+    async onIsPrayedChanged(change)
+    {
+        this.storage.isPrayed = change.newValue;
+        this.updateBadgeBackgroundColor(change.newValue);
+        utils.timeLog('isPrayed changed from', change.oldValue, 'to', change.newValue);
     }
 
     async onParametersChanged(change)

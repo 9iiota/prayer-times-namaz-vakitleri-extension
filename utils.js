@@ -7,14 +7,11 @@ export const COLORS =
 {
     GREEN: "#00FF00",
     GRAY: "#808080",
-    BLUE: "#0000FF",
     RED: "#FF0000",
     LIGHT_GREEN: "#baffde",
     LIGHT_BLUE: "#baebff",
     LIGHT_RED: "#ffbaba",
     BLACK: "#000000",
-    WHITE: "#FFFFFF",
-
 };
 export const PRAYER_CALCULATION_METHOD_IDS =
 {
