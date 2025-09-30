@@ -399,10 +399,10 @@ class PopupController
                 return { name: values[2]?.trim(), id: values[3] };
             }).filter(item => item.name && item.id);
 
-            const bestStateMatch = this.fuzzySearch(state || city, states);
-            if (!bestStateMatch) return null;
+            const bestStateMatchObj = this.fuzzySearch(state || city, states); // { name: "", id: "" }
+            if (!bestStateMatchObj) return null;
 
-            const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatch.id)}&Culture=en-US`);
+            const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatchObj.id)}&Culture=en-US`);
             if (!stateRes.ok) throw new Error('Network response not ok');
             const stateJson = await stateRes.json();
             citiesList = stateJson.StateRegionList || [];

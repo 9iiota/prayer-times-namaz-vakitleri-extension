@@ -1,1 +1,3 @@
-- use state in fetch prayer time
+- on parameters changed, change badge text
+- show loading icon
+- update parameters even when same location is selected
