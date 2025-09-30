@@ -152,7 +152,7 @@ class BackgroundController
 
         if (timeDifferenceMinutes === 1)
         {
-            const secondsUntilNextMinute = msUntilNextMinute() / 1000;
+            const secondsUntilNextMinute = this.msUntilNextMinute() / 1000;
             return `${Math.ceil(secondsUntilNextMinute)}s`;
         }
         else if (timeDifferenceMinutes === 0)
