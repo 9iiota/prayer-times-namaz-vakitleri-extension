@@ -22,6 +22,7 @@ class BackgroundController
         {
             if (area === 'local')
             {
+                console.log(Object.keys(changes)[0]);
                 switch (Object.keys(changes)[0])
                 {
                     case "isPrayed":
@@ -292,6 +293,7 @@ class BackgroundController
 
     async onParametersChanged(change)
     {
+        console.log(change.newValue);
         this.storage.parameters = change.newValue;
         utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
 

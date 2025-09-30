@@ -381,7 +381,7 @@ class PopupController
         return results.length > 0 ? results[0].item : null;
     }
 
-    async retrieveCityId(countryId, city)
+    async retrieveCityId(countryId, city, state)
     {
         // Fetch the country/state list
         const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${encodeURIComponent(countryId)}&Culture=en-US`);
@@ -399,7 +399,7 @@ class PopupController
                 return { name: values[2]?.trim(), id: values[3] };
             }).filter(item => item.name && item.id);
 
-            const bestStateMatch = fuzzySearch(city, states)?.[0];
+            const bestStateMatch = this.fuzzySearch(state || city, states);
             if (!bestStateMatch) return null;
 
             const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatch.id)}&Culture=en-US`);
@@ -440,9 +440,7 @@ class PopupController
                 const countryId = Object.keys(countryMap).find(key => countryMap[key] === newParamaters.country);
                 if (!countryId) throw new Error(`Country not found in countryMap: ${newParamaters.country}`);
 
-                // TODO use state if available
-
-                const cityId = await this.retrieveCityId(countryId, newParamaters.city);
+                const cityId = await this.retrieveCityId(countryId, newParamaters.city, newParamaters.state);
                 if (!cityId) throw new Error(`City not found: ${newParamaters.city} in country: ${newParamaters.country}`);
 
                 const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
