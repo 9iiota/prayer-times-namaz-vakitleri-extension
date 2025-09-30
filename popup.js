@@ -278,19 +278,21 @@ class PopupController
         return prayerTimes.find(entry => entry.date === dateStr);
     }
 
-    rgbaArrayToHex(colorArray)
+    async updateCurrentPrayerBackgroundColor()
     {
-        // Ensure at least RGB values are provided
-        if (colorArray.length < 3)
+        const currentPrayerContainer = document.getElementById("current-prayer");
+        if (currentPrayerContainer)
         {
-            return false;
+            if (this.storage.isPrayed)
+            {
+                currentPrayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
+            }
+            else
+            {
+                const badgeText = await chrome.action.getBadgeText({});
+                currentPrayerContainer.style.backgroundColor = badgeText.includes("m") ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
+            }
         }
-
-        // Extract RGB values, ignore alpha for hex conversion
-        const [r, g, b] = colorArray;
-
-        // Convert each component to a two-digit hex string and concatenate
-        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
     }
 
     async displayPrayerTimes(dailyPrayerTimes)
@@ -330,33 +332,13 @@ class PopupController
             if (i === currentPrayerIndex)
             {
                 prayerContainer.id = "current-prayer";
-
-                // Set background color based on isPrayed state
-                if (this.storage.isPrayed)
-                {
-                    prayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
-                }
-                else
-                {
-                    const badgeBackgroundColor = this.rgbaArrayToHex(await chrome.action.getBadgeBackgroundColor({}));
-                    prayerContainer.style.backgroundColor = badgeBackgroundColor === utils.COLORS.RED ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
-                }
+                this.updateCurrentPrayerBackgroundColor();
 
                 prayerContainer.addEventListener("click", async () =>
                 {
-                    // Toggle isPrayed state and update background color
                     this.storage.isPrayed = !this.storage.isPrayed;
-                    if (this.storage.isPrayed)
-                    {
-                        prayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
-                    }
-                    else
-                    {
-                        const badgeText = await chrome.action.getBadgeText({});
-                        prayerContainer.style.backgroundColor = badgeText.includes("m") ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
-                    }
+                    this.updateCurrentPrayerBackgroundColor();
 
-                    // Store new isPrayed state in storage
                     await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
                     utils.timeLog("Toggled isPrayed to:", this.storage.isPrayed);
                 });
