@@ -219,9 +219,6 @@ class BackgroundController
         console.log(change.newValue);
         this.storage.parameters = change.newValue;
         utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
-
-        // Send message to popup to fetch new prayer times if open
-        chrome.runtime.sendMessage({ action: "parametersChanged", data: this.storage.parameters });
     }
 
     async onPrayerTimesChanged(change)

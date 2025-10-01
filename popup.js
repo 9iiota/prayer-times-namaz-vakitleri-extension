@@ -16,9 +16,6 @@ class PopupController
         {
             switch (msg.action)
             {
-                case "parametersChanged":
-                    this.onParametersChanged(msg.data);
-                    break;
                 case "prayerChanged":
                     this.displayPrayerTimes(msg.data);
                     break;
@@ -178,6 +175,9 @@ class PopupController
                     {
                         await this.fetchAndStoreLocationDetails(locationResult);
                         utils.timeLog("Stored location details for:", locationResult);
+
+                        // Fetch new prayer times with updated parameters
+                        this.onParametersChanged();
                     }
                     catch (error)
                     {
@@ -403,24 +403,24 @@ class PopupController
         return bestCityMatch?.id || null;
     }
 
-    async onParametersChanged(newParamaters)
+    async onParametersChanged()
     {
         let prayerTimes = [];
         // Try to scrape from https://namazvakitleri.diyanet.gov.tr/ first
         // because the API times are usually off by a few minutes compared to the official site
-        if (newParamaters.calculationMethodId === "13"
-            && newParamaters.asrMethodId === "0"
-            && newParamaters.country
-            && newParamaters.city
+        if (this.storage.parameters.calculationMethodId === "13"
+            && this.storage.parameters.asrMethodId === "0"
+            && this.storage.parameters.country
+            && this.storage.parameters.city
         )
             try
             {
                 utils.timeLog('Fetching prayer times from official site...');
-                const countryId = Object.keys(countryMap).find(key => countryMap[key] === newParamaters.country);
-                if (!countryId) throw new Error(`Country not found in countryMap: ${newParamaters.country}`);
+                const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
+                if (!countryId) throw new Error(`Country not found in countryMap: ${this.storage.parameters.country}`);
 
-                const cityId = await this.retrieveCityId(countryId, newParamaters.city, newParamaters.state);
-                if (!cityId) throw new Error(`City not found: ${newParamaters.city} in country: ${newParamaters.country}`);
+                const cityId = await this.retrieveCityId(countryId, this.storage.parameters.city, this.storage.parameters.state);
+                if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country: ${this.storage.parameters.country}`);
 
                 const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
                 if (!response.ok) throw new Error(`Failed to fetch prayer times from official site. Status: ${response.status}`);
@@ -463,7 +463,7 @@ class PopupController
         try
         {
             const response = await fetch(
-                `https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(newParamaters.countryCode)}&zipcode=${encodeURIComponent(newParamaters.zipCode)}&latitude=${encodeURIComponent(newParamaters.latitude)}&longitude=${encodeURIComponent(newParamaters.longitude)}&method=${encodeURIComponent(newParamaters.calculationMethodId)}&juristic=${encodeURIComponent(newParamaters.asrMethodId)}&time_format=0`
+                `https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(this.storage.parameters.countryCode)}&zipcode=${encodeURIComponent(this.storage.parameters.zipCode)}&latitude=${encodeURIComponent(this.storage.parameters.latitude)}&longitude=${encodeURIComponent(this.storage.parameters.longitude)}&method=${encodeURIComponent(this.storage.parameters.calculationMethodId)}&juristic=${encodeURIComponent(this.storage.parameters.asrMethodId)}&time_format=0`
             );
             if (!response.ok) throw new Error(`Failed to fetch prayer times from API. Status: ${response.status}`);
             const json = await response.json();
