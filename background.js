@@ -9,7 +9,6 @@ class BackgroundController
         this.nextPrayerIndex = null;
         this.extraMinutes = 0; // For testing purposes
         this.badgeText = "";
-        this.badgeTextColor = "";
         this.badgeBackgroundColor = "";
         this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
         this.badgeTaskId = null;
@@ -184,7 +183,6 @@ class BackgroundController
     async updateBadgeColors()
     {
         let backgroundColor = utils.COLORS.LIGHT_BLUE;
-        let textColor = utils.COLORS.BLACK;
         if (this.storage.isPrayed)
         {
             backgroundColor = utils.COLORS.GREEN;
@@ -192,12 +190,7 @@ class BackgroundController
         else
         {
             const currentPrayerIndex = utils.getCurrentPrayerIndex(this.todayPrayerTimes);
-            if (currentPrayerIndex === 1)
-            {
-                backgroundColor = utils.COLORS.GRAY;
-                textColor = utils.COLORS.WHITE;
-            }
-            else
+            if (currentPrayerIndex !== 1)
             {
                 const badgeText = await chrome.action.getBadgeText({});
                 if (badgeText.includes("m"))
@@ -212,13 +205,6 @@ class BackgroundController
             this.badgeBackgroundColor = backgroundColor;
             chrome.action.setBadgeBackgroundColor({ color: this.badgeBackgroundColor });
             utils.timeLog('Set badge background color to', this.badgeBackgroundColor);
-        }
-
-        if (this.badgeTextColor !== textColor)
-        {
-            this.badgeTextColor = textColor;
-            chrome.action.setBadgeTextColor({ color: this.badgeTextColor });
-            utils.timeLog('Set badge text color to', this.badgeTextColor);
         }
     }
 
@@ -314,14 +300,10 @@ chrome.alarms.onAlarm.addListener(() =>
 
 chrome.runtime.onInstalled.addListener(async () =>
 {
-    // chrome.storage.local.clear();
     const backgroundController = await BackgroundController.init();
-    // await utils.populateStorage();
-    // utils.startPrayerTimeBadgeTask();
 });
 chrome.runtime.onStartup.addListener(async () =>
 {
     const backgroundController = await BackgroundController.init();
-    // utils.startPrayerTimeBadgeTask();
 });
 

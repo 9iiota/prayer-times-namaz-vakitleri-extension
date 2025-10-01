@@ -283,13 +283,7 @@ class PopupController
         const currentPrayerContainer = document.getElementById("current-prayer");
         if (currentPrayerContainer)
         {
-            const sunContainer = document.querySelector(".prayer:nth-of-type(5)");
-            if (currentPrayerContainer === sunContainer)
-            {
-                // Sun can't be clicked
-                currentPrayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GRAY;
-            }
-            else if (this.storage.isPrayed)
+            if (this.storage.isPrayed)
             {
                 currentPrayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
             }
