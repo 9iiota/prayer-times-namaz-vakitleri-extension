@@ -22,7 +22,6 @@ class BackgroundController
         {
             if (area === 'local')
             {
-                console.log(Object.keys(changes)[0]);
                 switch (Object.keys(changes)[0])
                 {
                     case "isPrayed":
