@@ -11,6 +11,7 @@ export const COLORS =
     LIGHT_GREEN: "#baffde",
     LIGHT_BLUE: "#baebff",
     LIGHT_RED: "#ffbaba",
+    LIGHT_GRAY: "#bfbfbf",
     BLACK: "#000000",
 };
 export const PRAYER_CALCULATION_METHOD_IDS =
