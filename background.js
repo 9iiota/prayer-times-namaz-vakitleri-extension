@@ -8,6 +8,7 @@ class BackgroundController
         this.todayPrayerTimes = null;
         this.nextPrayerIndex = null;
         this.badgeText = "";
+        this.badgeTextColor = "";
         this.badgeBackgroundColor = "";
         this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
         this.badgeTaskId = null;
@@ -118,7 +119,7 @@ class BackgroundController
             utils.timeLog('Updated badge text to', this.badgeText);
         }
 
-        this.updateBadgeBackgroundColor(this.storage.isPrayed);
+        this.updateBadgeColors();
 
         if (timeDifference.includes("s"))
         {
@@ -179,9 +180,10 @@ class BackgroundController
         this.badgeTaskId = setTimeout(() => this.startBadgeTask(), this.badgeTaskIntervalMs);
     }
 
-    async updateBadgeBackgroundColor(isPrayed)
+    async updateBadgeColors()
     {
-        if (isPrayed)
+        let textColor = utils.COLORS.BLACK;
+        if (this.storage.isPrayed)
         {
             chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
             utils.timeLog('Set badge background color to', utils.COLORS.GREEN);
@@ -193,6 +195,7 @@ class BackgroundController
             {
                 chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
                 utils.timeLog('Set badge background color to', utils.COLORS.GRAY);
+                textColor = utils.COLORS.WHITE;
             }
             else
             {
@@ -210,12 +213,19 @@ class BackgroundController
                 utils.timeLog('Set badge background color to', backgroundColor);
             }
         }
+
+        if (this.badgeTextColor !== textColor)
+        {
+            this.badgeTextColor = textColor;
+            chrome.action.setBadgeTextColor({ color: this.badgeTextColor });
+            utils.timeLog('Set badge text color to', this.badgeTextColor);
+        }
     }
 
     async onIsPrayedChanged(change)
     {
         this.storage.isPrayed = change.newValue;
-        this.updateBadgeBackgroundColor(change.newValue);
+        this.updateBadgeColors();
         utils.timeLog('isPrayed changed from', change.oldValue, 'to', change.newValue);
     }
 
