@@ -7,6 +7,7 @@ class BackgroundController
         this.storage = storage;
         this.todayPrayerTimes = null;
         this.nextPrayerIndex = null;
+        this.extraMinutes = 0; // For testing purposes
         this.badgeText = "";
         this.badgeTextColor = "";
         this.badgeBackgroundColor = "";
@@ -110,7 +111,7 @@ class BackgroundController
             chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes });
         }
 
-        const currentTimeFormatted = utils.getCurrentTimeFormatted();
+        const currentTimeFormatted = utils.getCurrentTimeFormatted(this.extraMinutes); // Extra minutes can be added for testing purposes
         const timeDifference = this.getTimeDifference(currentTimeFormatted, nextPrayerTime);
         if (this.badgeText !== timeDifference)
         {
@@ -182,36 +183,35 @@ class BackgroundController
 
     async updateBadgeColors()
     {
+        let backgroundColor = utils.COLORS.LIGHT_BLUE;
         let textColor = utils.COLORS.BLACK;
         if (this.storage.isPrayed)
         {
-            chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GREEN });
-            utils.timeLog('Set badge background color to', utils.COLORS.GREEN);
+            backgroundColor = utils.COLORS.GREEN;
         }
         else
         {
             const currentPrayerIndex = utils.getCurrentPrayerIndex(this.todayPrayerTimes);
             if (currentPrayerIndex === 1)
             {
-                chrome.action.setBadgeBackgroundColor({ color: utils.COLORS.GRAY });
-                utils.timeLog('Set badge background color to', utils.COLORS.GRAY);
+                backgroundColor = utils.COLORS.GRAY;
                 textColor = utils.COLORS.WHITE;
             }
             else
             {
                 const badgeText = await chrome.action.getBadgeText({});
-                let backgroundColor;
                 if (badgeText.includes("m"))
                 {
                     backgroundColor = utils.COLORS.RED;
                 }
-                else
-                {
-                    backgroundColor = utils.COLORS.LIGHT_BLUE;
-                }
-                chrome.action.setBadgeBackgroundColor({ color: backgroundColor });
-                utils.timeLog('Set badge background color to', backgroundColor);
             }
+        }
+
+        if (this.badgeBackgroundColor !== backgroundColor)
+        {
+            this.badgeBackgroundColor = backgroundColor;
+            chrome.action.setBadgeBackgroundColor({ color: this.badgeBackgroundColor });
+            utils.timeLog('Set badge background color to', this.badgeBackgroundColor);
         }
 
         if (this.badgeTextColor !== textColor)
@@ -266,7 +266,7 @@ class BackgroundController
 
     getTimeFromNowBadgeFormatted(endTimeFormatted)
     {
-        const startTimeFormatted = utils.getCurrentTimeFormatted();
+        const startTimeFormatted = utils.getCurrentTimeFormatted(this.extraMinutes); // Extra minutes can be added for testing purposes
         const [hours1, minutes1] = startTimeFormatted.split(':').map(Number);
         const [hours2, minutes2] = endTimeFormatted.split(':').map(Number);
 
