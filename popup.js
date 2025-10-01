@@ -162,13 +162,13 @@ class PopupController
         {
             for (const locationResult of locationResults)
             {
+                const formattedLocationName = this.formatLocation(locationResult.address);
                 const option = document.createElement("div");
-                option.textContent = locationResult.display_name;
+                option.textContent = formattedLocationName;
                 option.addEventListener("click", async () =>
                 {
                     // Update storage with selected location
                     locationResultsContainer.style.display = "none";
-                    const formattedLocationName = this.formatLocation(locationResult.address);
                     locationName.textContent = formattedLocationName;
                     locationName.contentEditable = false;
                     try
