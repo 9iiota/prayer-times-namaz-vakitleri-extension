@@ -44,6 +44,7 @@ class BackgroundController
     {
         try
         {
+            // chrome.local.storage.clear(); // TODO test when less than 1 hour
             const keys = Object.keys(utils.STORAGE_DEFAULTS);
             const existing = await chrome.storage.local.get(keys);
 
@@ -106,7 +107,11 @@ class BackgroundController
             this.nextPrayerIndex = nextPrayerIndex;
             await chrome.storage.local.set({ isPrayed: false });
             this.storage.isPrayed = false;
-            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes });
+            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
+                .catch((error) =>
+                {
+                    utils.timeLog(`Popup page not open, cannot send prayerChanged message.`, error);
+                });
         }
 
         const currentTimeFormatted = utils.getCurrentTimeFormatted(this.extraMinutes); // Extra minutes can be added for testing purposes
@@ -204,6 +209,9 @@ class BackgroundController
             this.badgeBackgroundColor = backgroundColor;
             chrome.action.setBadgeBackgroundColor({ color: this.badgeBackgroundColor });
             utils.timeLog('Set badge background color to', this.badgeBackgroundColor);
+
+            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
+                .catch((error) => { }); // Ignore errors if no popup is open
         }
     }
 

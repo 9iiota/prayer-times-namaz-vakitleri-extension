@@ -1,3 +1,2 @@
-- on parameters changed, change badge text
 - show loading icon
-- update parameters even when same location is selected
+- after first time entering location and less than 1 hour until next prayer, currentprayer should be red instead of default blue

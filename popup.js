@@ -10,6 +10,8 @@ class PopupController
         this.gridContainer = document.querySelector(".grid-container");
         this.lastRequestTime = 0;
         this.requestQueue = Promise.resolve();
+        this.debugModeSequence = ["a", "b", "c"]
+        this.sequenceIndex = 0;
 
         // Listen for messages from background.js
         chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
@@ -230,7 +232,7 @@ class PopupController
         }
         else
         {
-            locationName.textContent = "Click to type location";
+            locationName.textContent = "Click to type city name";
         }
 
         // Make location name editable on click
@@ -500,6 +502,27 @@ class PopupController
         const dailyPrayerTimes = this.getPrayerTimesByDate(prayerTimes, new Date());
         this.displayPrayerTimes(dailyPrayerTimes);
     }
+
+    onKeydown(event)
+    {
+        const key = event.key;
+        if (key === this.debugModeSequence[this.sequenceIndex])
+        {
+            this.sequenceIndex++;
+
+            if (this.sequenceIndex === this.debugModeSequence.length)
+            {
+                this.sequenceIndex = 0;
+                // TODO: Activate debug mode
+            }
+        }
+        else
+        {
+            // Reset if the sequence is broken
+            // Also handle the case where the first key of the sequence is pressed again
+            this.sequenceIndex = key === this.debugModeSequence[0] ? 1 : 0;
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () =>
@@ -545,5 +568,10 @@ document.addEventListener("DOMContentLoaded", async () =>
             locationContainer.style.display = "none";
             locationSpan.contentEditable = false;
         }
+    });
+
+    document.addEventListener("keydown", (event) =>
+    {
+        popupController.onKeydown(event);
     });
 });
