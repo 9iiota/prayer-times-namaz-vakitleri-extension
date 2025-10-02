@@ -40,8 +40,16 @@ class BackgroundController
         });
     }
 
+    static instance = null;
+
     static async init()
     {
+        if (BackgroundController.instance)
+        {
+            utils.timeLog('BackgroundController instance already exists.');
+            return BackgroundController.instance;
+        }
+
         try
         {
             // chrome.local.storage.clear(); // TODO test when less than 1 hour
@@ -56,7 +64,9 @@ class BackgroundController
 
             await chrome.storage.local.set(merged);
             utils.timeLog('Initialized storage with default values:', merged);
-            return new BackgroundController(merged);
+
+            BackgroundController.instance = new BackgroundController(merged);
+            return BackgroundController.instance;
         }
         catch (error)
         {
@@ -210,8 +220,8 @@ class BackgroundController
             chrome.action.setBadgeBackgroundColor({ color: this.badgeBackgroundColor });
             utils.timeLog('Set badge background color to', this.badgeBackgroundColor);
 
-            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
-                .catch((error) => { }); // Ignore errors if no popup is open
+            // chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
+            //     .catch((error) => { }); // Ignore errors if no popup is open TODO Fix
         }
     }
 
@@ -304,10 +314,17 @@ chrome.alarms.onAlarm.addListener(() =>
 
 chrome.runtime.onInstalled.addListener(async () =>
 {
-    const backgroundController = await BackgroundController.init();
+    await BackgroundController.init();
 });
 chrome.runtime.onStartup.addListener(async () =>
 {
-    const backgroundController = await BackgroundController.init();
+    await BackgroundController.init();
 });
-
+chrome.idle.onStateChanged.addListener(async (newState) =>
+{
+    console.log(`Idle state changed to ${newState}`);
+    if (newState === "active")
+    {
+        await BackgroundController.init();
+    }
+});
