@@ -34,6 +34,17 @@ body
     height: 100%;
 }
 
+.duo-container
+{
+    display: flex;
+    flex-direction: row;
+}
+
+.duo-container>*:not(:last-child)
+{
+    border-right: 1px solid #ccc;
+}
+
 .grid-container
 {
     display: grid;

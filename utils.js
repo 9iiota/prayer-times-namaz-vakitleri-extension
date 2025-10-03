@@ -52,8 +52,9 @@ export const STORAGE_DEFAULTS =
     prayerTimes: null
 };
 export const NOMINATIM_REQUEST_INTERVAL_MS = 2000; // Nominatim usage policy allows 1 request per second
+const extraMinutes = 0; // Extra minutes can be added to current time for testing purposes
 
-export function getCurrentTimeFormatted(extraMinutes = 0)
+export function getCurrentTimeFormatted()
 {
     // Extra minutes can be added to current time for testing purposes
     const now = new Date();

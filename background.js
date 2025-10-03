@@ -7,7 +7,6 @@ class BackgroundController
         this.storage = storage;
         this.todayPrayerTimes = null;
         this.nextPrayerIndex = null;
-        this.extraMinutes = 0; // For testing purposes
         this.badgeText = "";
         this.badgeBackgroundColor = "";
         this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
@@ -115,16 +114,20 @@ class BackgroundController
         else if (this.nextPrayerIndex !== nextPrayerIndex)
         {
             this.nextPrayerIndex = nextPrayerIndex;
-            await chrome.storage.local.set({ isPrayed: false });
+            console.log(`Next prayer changed from index ${this.nextPrayerIndex} to ${nextPrayerIndex}`);
+
+            this.todayPrayerTimes = await this.getDatePrayerTimes(); // Refresh today's prayer times in case date changed
+
             this.storage.isPrayed = false;
-            chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
+            await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
+            chrome.runtime.sendMessage({ action: "prayerChanged", data: { todayPrayerTimes: this.todayPrayerTimes, isPrayed: this.storage.isPrayed } })
                 .catch((error) =>
                 {
                     utils.timeLog(`Popup page not open, cannot send prayerChanged message.`, error);
                 });
         }
 
-        const currentTimeFormatted = utils.getCurrentTimeFormatted(this.extraMinutes); // Extra minutes can be added for testing purposes
+        const currentTimeFormatted = utils.getCurrentTimeFormatted(); // Extra minutes can be added for testing purposes
         const timeDifference = this.getTimeDifference(currentTimeFormatted, nextPrayerTime);
         if (this.badgeText !== timeDifference)
         {
@@ -266,7 +269,7 @@ class BackgroundController
 
     getTimeFromNowBadgeFormatted(endTimeFormatted)
     {
-        const startTimeFormatted = utils.getCurrentTimeFormatted(this.extraMinutes); // Extra minutes can be added for testing purposes
+        const startTimeFormatted = utils.getCurrentTimeFormatted(); // Extra minutes can be added for testing purposes
         const [hours1, minutes1] = startTimeFormatted.split(':').map(Number);
         const [hours2, minutes2] = endTimeFormatted.split(':').map(Number);
 

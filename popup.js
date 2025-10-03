@@ -10,7 +10,7 @@ class PopupController
         this.gridContainer = document.querySelector(".grid-container");
         this.lastRequestTime = 0;
         this.requestQueue = Promise.resolve();
-        this.debugModeSequence = ["a", "b", "c"]
+        this.debugModeSequence = ["a"]
         this.sequenceIndex = 0;
 
         // Listen for messages from background.js
@@ -19,7 +19,9 @@ class PopupController
             switch (msg.action)
             {
                 case "prayerChanged":
-                    this.displayPrayerTimes(msg.data);
+                    utils.timeLog("Received prayerChanged message:", msg.data);
+                    this.storage.isPrayed = msg.data.isPrayed;
+                    this.displayPrayerTimes(msg.data.todayPrayerTimes);
                     break;
                 default:
                     break;
@@ -302,7 +304,11 @@ class PopupController
         const currentPrayerIndex = utils.getCurrentPrayerIndex(dailyPrayerTimes);
 
         // Clear old current-prayer ids
-        document.querySelectorAll("#current-prayer").forEach(el => el.removeAttribute("id"));
+        document.querySelectorAll("#current-prayer").forEach(element =>
+        {
+            element.removeAttribute("id");
+            element.style.backgroundColor = "";
+        });
 
         for (const [i, name] of utils.PRAYER_NAMES.entries())
         {
@@ -513,7 +519,24 @@ class PopupController
             if (this.sequenceIndex === this.debugModeSequence.length)
             {
                 this.sequenceIndex = 0;
+                console.log("Debug mode activated!");
                 // TODO: Activate debug mode
+
+                let duoContainer = document.querySelector(".duo-container");
+                if (!duoContainer)
+                {
+                    duoContainer = document.createElement("div");
+                    duoContainer.className = "duo-container";
+
+                    const rightContainer = document.createElement("div");
+                    duoContainer.appendChild(rightContainer);
+
+                    const popupContainer = document.querySelector(".popup-container");
+                    popupContainer.appendChild(duoContainer);
+
+                    const gridContainer = document.querySelector(".grid-container");
+                    duoContainer.appendChild(gridContainer);
+                }
             }
         }
         else
