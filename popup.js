@@ -308,15 +308,21 @@ class PopupController
         const currentPrayerContainer = document.getElementById("current-prayer");
         if (currentPrayerContainer)
         {
+            let backgroundColor = utils.COLORS.LIGHT_BLUE;
+            const sunPrayerContainer = document.querySelectorAll(".prayer")[1];
             if (this.storage.isPrayed)
             {
-                currentPrayerContainer.style.backgroundColor = utils.COLORS.LIGHT_GREEN;
+                backgroundColor = utils.COLORS.LIGHT_GREEN;
             }
-            else
+            else if (currentPrayerContainer !== sunPrayerContainer)
             {
                 const badgeText = await chrome.action.getBadgeText({});
-                currentPrayerContainer.style.backgroundColor = badgeText.includes("m") ? utils.COLORS.LIGHT_RED : utils.COLORS.LIGHT_BLUE;
+                if (badgeText.includes("m"))
+                {
+                    backgroundColor = utils.COLORS.LIGHT_RED;
+                }
             }
+            currentPrayerContainer.style.backgroundColor = backgroundColor;
         }
     }
 
