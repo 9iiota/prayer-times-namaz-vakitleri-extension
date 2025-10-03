@@ -10,7 +10,7 @@ class PopupController
         this.gridContainer = document.querySelector(".grid-container");
         this.lastRequestTime = 0;
         this.requestQueue = Promise.resolve();
-        this.debugModeSequence = ["a"]
+        this.debugModeSequence = ["a", "b", "c"]
         this.sequenceIndex = 0;
 
         // Listen for messages from background.js
@@ -127,6 +127,21 @@ class PopupController
         return parts.filter(Boolean).join(", ");
     }
 
+    AddOrRemoveLoadingSpinner()
+    {
+        let loader = document.querySelector(".loader");
+        if (loader)
+        {
+            loader.remove();
+        }
+        else
+        {
+            loader = document.createElement("div");
+            loader.className = "loader";
+            document.body.prepend(loader);
+        }
+    }
+
     fetchAndStoreLocationDetails(locationResult)
     {
         return this.scheduleNominatimRequest(async () =>
@@ -171,6 +186,9 @@ class PopupController
                 option.textContent = formattedLocationName;
                 option.addEventListener("click", async () =>
                 {
+                    // Show loading spinner
+                    this.AddOrRemoveLoadingSpinner();
+
                     // Update storage with selected location
                     locationResultsContainer.style.display = "none";
                     locationName.textContent = formattedLocationName;
@@ -181,7 +199,10 @@ class PopupController
                         utils.timeLog("Stored location details for:", locationResult);
 
                         // Fetch new prayer times with updated parameters
-                        this.onParametersChanged();
+                        await this.onParametersChanged();
+
+                        // Hide loading spinner
+                        this.AddOrRemoveLoadingSpinner();
                     }
                     catch (error)
                     {
