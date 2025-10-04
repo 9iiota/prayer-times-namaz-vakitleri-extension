@@ -1,6 +1,6 @@
 # Prayer Times / Namaz Vakitleri Chrome Extension
 
-[Link to Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln)
+[Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln)
 
 ---
 
