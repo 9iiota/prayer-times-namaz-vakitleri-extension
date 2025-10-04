@@ -76,7 +76,7 @@ Contributions are welcome! Feel free to fork the repository and submit pull requ
 
 ## License
 
-This project is open-source and licensed under the MIT License.
+This project is open-source and licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ---
 
