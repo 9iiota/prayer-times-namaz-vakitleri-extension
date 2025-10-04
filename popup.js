@@ -127,7 +127,7 @@ class PopupController
         return parts.filter(Boolean).join(", ");
     }
 
-    AddOrRemoveLoadingSpinner()
+    toggleLoadingSpinner()
     {
         let loader = document.querySelector(".loader");
         if (loader)
@@ -187,7 +187,7 @@ class PopupController
                 option.addEventListener("click", async () =>
                 {
                     // Show loading spinner
-                    this.AddOrRemoveLoadingSpinner();
+                    this.toggleLoadingSpinner();
 
                     // Update storage with selected location
                     locationResultsContainer.style.display = "none";
@@ -200,15 +200,15 @@ class PopupController
 
                         // Fetch new prayer times with updated parameters
                         await this.onParametersChanged();
-
-                        // Hide loading spinner
-                        this.AddOrRemoveLoadingSpinner();
                     }
                     catch (error)
                     {
                         utils.timeLog("Error storing location details:", error);
                         // TODO maybe show an error message to the user
                     }
+
+                    // Hide loading spinner
+                    this.toggleLoadingSpinner();
                 });
                 locationResultsContainer.appendChild(option);
             }
