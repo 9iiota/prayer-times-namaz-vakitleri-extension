@@ -10,7 +10,7 @@ class PopupController
         this.gridContainer = document.querySelector(".grid-container");
         this.lastRequestTime = 0;
         this.requestQueue = Promise.resolve();
-        this.debugModeSequence = ["a", "b", "c"]
+        this.debugModeSequence = ["d", "e", "b", "u", "g", "m", "o", "d", "e"];
         this.sequenceIndex = 0;
 
         // Listen for messages from background.js
@@ -33,6 +33,25 @@ class PopupController
     {
         const storage = await chrome.storage.local.get(null);
         return new PopupController(storage);
+    }
+
+    createSettingsButton()
+    {
+        fetch("icons/settings.svg")
+            .then(res => res.text())
+            .then(svg =>
+            {
+                const settingsDiv = document.createElement("div");
+                settingsDiv.className = "settings-button";
+                settingsDiv.innerHTML = svg;
+                settingsDiv.addEventListener("click", () =>
+                {
+                    // TODO open options page
+                });
+
+                const gridContainer = document.querySelector(".grid-container");
+                gridContainer.prepend(settingsDiv);
+            });
     }
 
     async setupDropdown({ labelText, optionsMap, parameterKey })
@@ -547,23 +566,29 @@ class PopupController
             {
                 this.sequenceIndex = 0;
                 console.log("Debug mode activated!");
+                const prayers = document.querySelectorAll(".prayer");
+                prayers.forEach(prayer =>
+                {
+                    prayer.style.display = prayer.style.display === "block" ? "flex" : "block";
+                });
+
                 // TODO: Activate debug mode
 
-                let duoContainer = document.querySelector(".duo-container");
-                if (!duoContainer)
-                {
-                    duoContainer = document.createElement("div");
-                    duoContainer.className = "duo-container";
+                // let duoContainer = document.querySelector(".duo-container");
+                // if (!duoContainer)
+                // {
+                //     duoContainer = document.createElement("div");
+                //     duoContainer.className = "duo-container";
 
-                    const rightContainer = document.createElement("div");
-                    duoContainer.appendChild(rightContainer);
+                //     const rightContainer = document.createElement("div");
+                //     duoContainer.appendChild(rightContainer);
 
-                    const popupContainer = document.querySelector(".popup-container");
-                    popupContainer.appendChild(duoContainer);
+                //     const popupContainer = document.querySelector(".popup-container");
+                //     popupContainer.appendChild(duoContainer);
 
-                    const gridContainer = document.querySelector(".grid-container");
-                    duoContainer.appendChild(gridContainer);
-                }
+                //     const gridContainer = document.querySelector(".grid-container");
+                //     duoContainer.appendChild(gridContainer);
+                // }
             }
         }
         else
@@ -579,17 +604,19 @@ document.addEventListener("DOMContentLoaded", async () =>
 {
     const popupController = await PopupController.init();
 
-    const dropdowns = [
-        { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parameterKey: "calculationMethodId" },
-        { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parameterKey: "asrMethodId" }
-    ];
+    popupController.createSettingsButton();
 
-    for (const config of dropdowns)
-    {
-        await popupController.setupDropdown(config);
-    }
+    // const dropdowns = [
+    //     { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parameterKey: "calculationMethodId" },
+    //     { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parameterKey: "asrMethodId" }
+    // ];
 
-    popupController.setupLocationInput();
+    // for (const config of dropdowns)
+    // {
+    //     await popupController.setupDropdown(config);
+    // }
+
+    // popupController.setupLocationInput();
 
     if (popupController.storage && popupController.storage.prayerTimes)
     {
@@ -600,24 +627,24 @@ document.addEventListener("DOMContentLoaded", async () =>
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
     {
-        dropdowns.forEach((dropdown, i) =>
-        {
-            const methodSelect = document.querySelectorAll(".method-select")[i];
-            const optionsContainer = document.querySelectorAll(".method-options")[i];
-            if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
-            {
-                optionsContainer.style.display = "none";
-            }
-        });
+        // dropdowns.forEach((dropdown, i) =>
+        // {
+        //     const methodSelect = document.querySelectorAll(".method-select")[i];
+        //     const optionsContainer = document.querySelectorAll(".method-options")[i];
+        //     if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
+        //     {
+        //         optionsContainer.style.display = "none";
+        //     }
+        // });
 
-        // Location dropdown
-        const locationContainer = document.querySelector(".location-results");
-        const locationSpan = document.querySelector(".location-name");
-        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
-        {
-            locationContainer.style.display = "none";
-            locationSpan.contentEditable = false;
-        }
+        // // Location dropdown
+        // const locationContainer = document.querySelector(".location-results");
+        // const locationSpan = document.querySelector(".location-name");
+        // if (!locationContainer.contains(event.target) && event.target !== locationSpan)
+        // {
+        //     locationContainer.style.display = "none";
+        //     locationSpan.contentEditable = false;
+        // }
     });
 
     document.addEventListener("keydown", (event) =>

@@ -45,6 +45,33 @@ body
     border-right: 1px solid #ccc;
 }
 
+.settings-button
+{
+    display: flex;
+    justify-content: end;
+}
+
+.settings-button svg
+{
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+}
+
+.settings-button svg path,
+.settings-button svg circle
+{
+    stroke: #374151;
+    stroke-width: 1.5;
+    transition: stroke 0.3s;
+}
+
+.settings-button svg:hover path,
+.settings-button svg:hover circle
+{
+    filter: brightness(1.9);
+}
+
 .grid-container
 {
     display: grid;

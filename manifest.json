@@ -34,6 +34,10 @@
         {
             "resources": ["libs/fuse.min.js"],
             "matches": ["<all_urls>"]
+        },
+        {
+            "resources": ["icons/settings.svg"],
+            "matches": ["<all_urls>"]
         }
     ]
 }
