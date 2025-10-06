@@ -36,29 +36,51 @@ class PopupController
         return new PopupController(storage);
     }
 
-    createSettingsButton()
+    createLogoIcon()
     {
-        // fetch("icons/settings.svg")
-        //     .then(res => res.text())
-        //     .then(svg =>
-        //     {
-        //         const settingsButton = document.createElement("div");
-        //         settingsButton.className = "settings-button";
-        //         settingsButton.innerHTML = svg;
-        //         settingsButton.addEventListener("click", () =>
-        //         {
-        //             // TODO open options page
-        //             document.querySelector(".popup-container").classList.add("show-settings");
-        //         });
-        //         this.mainPageGridContainer.prepend(settingsButton);
-        //     });
-        const settingsButton = document.querySelector(".settings-button");
-        settingsButton.addEventListener("click", () =>
+        let logoIcon = document.querySelector(".logo-icon");
+        if (logoIcon) return; // Already created
+
+        fetch("icons/icon.svg")
+            .then(res => res.text())
+            .then(svg =>
+            {
+                const logoIcon = document.createElement("div");
+                logoIcon.className = "logo-icon";
+                logoIcon.innerHTML = svg;
+
+                const header = document.querySelector(".header");
+                header.prepend(logoIcon);
+            });
+    }
+
+    async createSettingsButton()
+    {
+        let settingsButton = document.querySelector(".settings-button");
+        if (settingsButton) return; // Already created
+
+        await fetch("icons/settings.svg")
+            .then(res => res.text())
+            .then(svg =>
+            {
+                settingsButton = document.createElement("div");
+                settingsButton.className = "settings-button";
+                settingsButton.innerHTML = svg;
+                settingsButton.addEventListener("click", () =>
+                {
+                    document.querySelector(".content").classList.toggle("show-settings");
+                    settingsButton.classList.toggle("active");
+                });
+
+                const header = document.querySelector(".header");
+                header.append(settingsButton);
+            });
+
+        if (!this.storage.prayerTimes)
         {
-            // TODO open options page
             document.querySelector(".content").classList.toggle("show-settings");
             settingsButton.classList.toggle("active");
-        });
+        }
     }
 
     async setupDropdown({ labelText, optionsMap, parameterKey })
@@ -606,6 +628,7 @@ document.addEventListener("DOMContentLoaded", async () =>
 {
     const popupController = await PopupController.init();
 
+    popupController.createLogoIcon();
     popupController.createSettingsButton();
 
     const dropdowns = [

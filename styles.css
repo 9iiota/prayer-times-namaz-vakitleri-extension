@@ -39,6 +39,20 @@ body
     border-bottom: 1px solid #ccc;
     padding: 6px 0 6px 0;
     margin: 0 6px 0 6px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-icon
+{
+    width: 32px;
+    height: 32px;
+}
+
+.title
+{
+    color: #374151;
+    font-weight: bold;
 }
 
 .settings-button
@@ -50,7 +64,7 @@ body
     border-radius: var(--default-border-radius);
     padding: var(--default-vertical-padding);
 
-    transition: filter 0.2s;
+    transition: filter 0.3s;
 }
 
 .settings-button:hover
@@ -72,7 +86,7 @@ body
 .content
 {
     display: flex;
-    transition: transform 0.4s ease;
+    transition: transform 0.3s ease;
 }
 
 .content.show-settings
@@ -113,33 +127,6 @@ body
 {
     border-right: 1px solid #ccc;
 }
-
-/* .settings-button
-{
-    display: flex;
-    justify-content: end;
-}
-
-.settings-button svg
-{
-    cursor: pointer;
-    width: 24px;
-    height: 24px;
-}
-
-.settings-button svg path,
-.settings-button svg circle
-{
-    stroke: #374151;
-    stroke-width: 1.5;
-    transition: stroke 0.3s;
-}
-
-.settings-button svg:hover path,
-.settings-button svg:hover circle
-{
-    filter: brightness(1.9);
-} */
 
 .grid-container
 {
@@ -221,7 +208,7 @@ body
 
 #current-prayer
 {
-    transition: background-color .2s, filter .2s;
+    transition: background-color .3s, filter .3s;
     background-color: #baebff;
 }
 
