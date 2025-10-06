@@ -7,7 +7,8 @@ class PopupController
     constructor(storage)
     {
         this.storage = storage;
-        this.gridContainer = document.querySelector(".grid-container");
+        this.mainPageGridContainer = document.querySelectorAll(".grid-container")[0];
+        this.settingsPageGridContainer = document.querySelectorAll(".grid-container")[1];
         this.lastRequestTime = 0;
         this.requestQueue = Promise.resolve();
         this.debugModeSequence = ["d", "e", "b", "u", "g", "m", "o", "d", "e"];
@@ -49,9 +50,7 @@ class PopupController
                     // TODO open options page
                     document.querySelector(".popup-container").classList.add("show-settings");
                 });
-
-                const gridContainer = document.querySelector(".grid-container");
-                gridContainer.prepend(settingsButton);
+                this.mainPageGridContainer.prepend(settingsButton);
             });
 
         document.getElementById("back-btn").addEventListener("click", () =>
@@ -64,7 +63,7 @@ class PopupController
     {
         const methodContainer = document.createElement("div");
         methodContainer.className = "method-container";
-        this.gridContainer.appendChild(methodContainer);
+        this.settingsPageGridContainer.appendChild(methodContainer);
 
         const methodLabel = document.createElement("span");
         methodLabel.className = "method-label";
@@ -312,13 +311,11 @@ class PopupController
                 // TODO maybe show an error message to the user
             }
         });
-
         locationContainer.appendChild(locationName);
 
         const locationResults = document.createElement("div");
         locationResults.className = "location-results";
         locationContainer.appendChild(locationResults);
-
     }
 
     getPrayerTimesByDate(prayerTimes, date)
@@ -366,13 +363,13 @@ class PopupController
         {
             // Check if prayer container already exist in the DOM
             // If it does, only update the time and current-prayer id
-            let prayerContainer = this.gridContainer.querySelectorAll(".prayer")[i];
+            let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[i];
             if (!prayerContainer)
             {
                 // Create prayer elements
                 prayerContainer = document.createElement("div");
                 prayerContainer.className = "prayer";
-                this.gridContainer.appendChild(prayerContainer);
+                this.mainPageGridContainer.appendChild(prayerContainer);
 
                 const nameSpan = document.createElement("span");
                 nameSpan.className = "prayer-name";
@@ -612,17 +609,17 @@ document.addEventListener("DOMContentLoaded", async () =>
 
     popupController.createSettingsButton();
 
-    // const dropdowns = [
-    //     { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parameterKey: "calculationMethodId" },
-    //     { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parameterKey: "asrMethodId" }
-    // ];
+    const dropdowns = [
+        { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parameterKey: "calculationMethodId" },
+        { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parameterKey: "asrMethodId" }
+    ];
 
-    // for (const config of dropdowns)
-    // {
-    //     await popupController.setupDropdown(config);
-    // }
+    for (const config of dropdowns)
+    {
+        await popupController.setupDropdown(config);
+    }
 
-    // popupController.setupLocationInput();
+    popupController.setupLocationInput();
 
     if (popupController.storage && popupController.storage.prayerTimes)
     {

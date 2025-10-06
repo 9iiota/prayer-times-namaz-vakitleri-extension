@@ -27,11 +27,11 @@ body
 
 .popup-container
 {
-    align-items: center;
+    align-items: flex-start;
     display: flex;
     flex-direction: row;
     /* flex-direction: column; */
-    /* width: 260px; */
+    width: 260px;
     /* width: 200%; */
     height: 100%;
     transition: transform 0.4s ease;
@@ -44,9 +44,11 @@ body
 
 .page
 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
     flex-shrink: 0;
-    box-sizing: border-box;
 }
 
 .duo-container
@@ -92,6 +94,7 @@ body
     display: grid;
     gap: var(--default-vertical-padding);
     width: 100%;
+    padding: var(--default-vertical-padding) 0 var(--default-vertical-padding) 0;
     /* padding: var(--default-vertical-padding) 28px var(--default-vertical-padding) 28px; */
 }
 
@@ -127,7 +130,8 @@ body
 {
     background-color: #f3f4f6;
     border-radius: var(--default-border-radius);
-    padding: var(--default-vertical-padding) 60px var(--default-vertical-padding) 60px;
+    /* padding: var(--default-vertical-padding) 60px var(--default-vertical-padding) 60px; */
+    padding: var(--default-vertical-padding);
     text-align: center;
     display: block;
     /* TODO give choice of block or flex */
