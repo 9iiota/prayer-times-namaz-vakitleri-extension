@@ -41,17 +41,23 @@ class PopupController
             .then(res => res.text())
             .then(svg =>
             {
-                const settingsDiv = document.createElement("div");
-                settingsDiv.className = "settings-button";
-                settingsDiv.innerHTML = svg;
-                settingsDiv.addEventListener("click", () =>
+                const settingsButton = document.createElement("div");
+                settingsButton.className = "settings-button";
+                settingsButton.innerHTML = svg;
+                settingsButton.addEventListener("click", () =>
                 {
                     // TODO open options page
+                    document.querySelector(".popup-container").classList.add("show-settings");
                 });
 
                 const gridContainer = document.querySelector(".grid-container");
-                gridContainer.prepend(settingsDiv);
+                gridContainer.prepend(settingsButton);
             });
+
+        document.getElementById("back-btn").addEventListener("click", () =>
+        {
+            document.querySelector(".popup-container").classList.remove("show-settings");
+        });
     }
 
     async setupDropdown({ labelText, optionsMap, parameterKey })
