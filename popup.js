@@ -38,24 +38,26 @@ class PopupController
 
     createSettingsButton()
     {
-        fetch("icons/settings.svg")
-            .then(res => res.text())
-            .then(svg =>
-            {
-                const settingsButton = document.createElement("div");
-                settingsButton.className = "settings-button";
-                settingsButton.innerHTML = svg;
-                settingsButton.addEventListener("click", () =>
-                {
-                    // TODO open options page
-                    document.querySelector(".popup-container").classList.add("show-settings");
-                });
-                this.mainPageGridContainer.prepend(settingsButton);
-            });
-
-        document.getElementById("back-btn").addEventListener("click", () =>
+        // fetch("icons/settings.svg")
+        //     .then(res => res.text())
+        //     .then(svg =>
+        //     {
+        //         const settingsButton = document.createElement("div");
+        //         settingsButton.className = "settings-button";
+        //         settingsButton.innerHTML = svg;
+        //         settingsButton.addEventListener("click", () =>
+        //         {
+        //             // TODO open options page
+        //             document.querySelector(".popup-container").classList.add("show-settings");
+        //         });
+        //         this.mainPageGridContainer.prepend(settingsButton);
+        //     });
+        const settingsButton = document.querySelector(".settings-button");
+        settingsButton.addEventListener("click", () =>
         {
-            document.querySelector(".popup-container").classList.remove("show-settings");
+            // TODO open options page
+            document.querySelector(".content").classList.toggle("show-settings");
+            settingsButton.classList.toggle("active");
         });
     }
 
@@ -256,12 +258,9 @@ class PopupController
 
     setupLocationInput()
     {
-        const dropdowns = document.querySelectorAll(".method-container");
-        const lastDropdown = dropdowns[dropdowns.length - 1];
-
         const locationContainer = document.createElement("div");
         locationContainer.className = "location-container";
-        lastDropdown.after(locationContainer);
+        this.settingsPageGridContainer.prepend(locationContainer);
 
         const locationName = document.createElement("span");
         locationName.className = "location-name";

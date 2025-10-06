@@ -27,17 +27,55 @@ body
 
 .popup-container
 {
-    align-items: flex-start;
-    display: flex;
-    flex-direction: row;
-    /* flex-direction: column; */
+    display: block;
     width: 260px;
-    /* width: 200%; */
     height: 100%;
+}
+
+.header
+{
+    display: flex;
+    justify-content: flex-end;
+    border-bottom: 1px solid #ccc;
+    padding: 6px 0 6px 0;
+    margin: 0 6px 0 6px;
+}
+
+.settings-button
+{
+    display: flex !important;
+    width: 24px;
+
+    background-color: #f3f4f6;
+    border-radius: var(--default-border-radius);
+    padding: var(--default-vertical-padding);
+
+    transition: filter 0.2s;
+}
+
+.settings-button:hover
+{
+    cursor: pointer;
+    filter: brightness(.9);
+}
+
+.settings-button:active
+{
+    filter: brightness(.8);
+}
+
+.settings-button.active
+{
+    filter: brightness(.8);
+}
+
+.content
+{
+    display: flex;
     transition: transform 0.4s ease;
 }
 
-.popup-container.show-settings
+.content.show-settings
 {
     transform: translateX(-100%);
 }
@@ -51,6 +89,20 @@ body
     flex-shrink: 0;
 }
 
+#settings-page .grid-container>div
+{
+    border-bottom: 1px solid #ccc;
+    /* the horizontal line */
+    padding-bottom: 1rem;
+    /* space before the line */
+}
+
+#settings-page .grid-container>div:last-child
+{
+    border-bottom: none;
+    /* remove line after the last item */
+}
+
 .duo-container
 {
     display: flex;
@@ -62,7 +114,7 @@ body
     border-right: 1px solid #ccc;
 }
 
-.settings-button
+/* .settings-button
 {
     display: flex;
     justify-content: end;
@@ -87,7 +139,7 @@ body
 .settings-button svg:hover circle
 {
     filter: brightness(1.9);
-}
+} */
 
 .grid-container
 {
@@ -238,10 +290,11 @@ body
 .method-select
 {
     text-align: center;
-    padding: var(--default-vertical-padding) 4px var(--default-vertical-padding) 4px;
+    padding: var(--default-vertical-padding) 0 var(--default-vertical-padding) 0;
     font-size: x-small;
     background-color: #f3f4f6;
     border-radius: var(--default-border-radius);
+    width: 100%;
 }
 
 .method-select:hover
@@ -285,17 +338,16 @@ body
 .method-container
 {
     position: relative;
-    /* anchor point for absolute children */
-    display: grid;
+    display: flex;
+    flex-direction: column;
     text-align: center;
+    align-items: center;
     gap: 4px;
-    /* display: inline-block; */
-    /* keeps it tight around button */
 }
 
 .method-label
 {
-    font-size: small;
+    /* font-size: small; */
     color: #374151;
 }
 
