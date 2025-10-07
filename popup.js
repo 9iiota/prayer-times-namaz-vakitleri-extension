@@ -124,16 +124,37 @@ class PopupController
             option.textContent = name;
             option.addEventListener("click", async () =>
             {
+                this.toggleLoadingSpinner();
+
+                // Update storage with selected option
+                const previouslySelectedId = parentObject[objectKey];
+                if (previouslySelectedId === id)
+                {
+                    optionsContainer.style.display = "none";
+                    this.toggleLoadingSpinner();
+                    return;
+                }
+
+                const previousStorage = structuredClone(this.storage);
+
                 parentObject[objectKey] = id;
                 await chrome.storage.local.set(this.storage);
-                this.toggleLoadingSpinner();
-                await this.onParametersChanged(); // TODO maybe change to onStorageChanged and only update times if parametesr are changed
-                this.toggleLoadingSpinner();
-                utils.timeLog(`Updated ${objectKey} to:`, id);
+
+                await this.onStorageChanged(previousStorage);
+
+                // Remove selected class from all options
+                optionsContainer.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+                option.classList.add("selected");
+
+                // Update displayed method name and close dropdown
                 methodName.textContent = name;
                 optionsContainer.style.display = "none";
+
+                this.toggleLoadingSpinner();
             });
+
             if (methodName.textContent === name) option.classList.add("selected");
+
             optionsContainer.appendChild(option);
         }
     }
@@ -158,7 +179,6 @@ class PopupController
         notificationsButton.innerHTML = svg;
         notificationsButton.addEventListener("click", () =>
         {
-            // TODO turn minutes before button on or off
             notificationsButton.classList.toggle("active");
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
             chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
@@ -335,7 +355,8 @@ class PopupController
             if (this.storage.parameters.state)
             {
                 locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.state}, ${this.storage.parameters.country}`;
-            } else
+            }
+            else
             {
                 locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.country}`;
             }
@@ -521,6 +542,61 @@ class PopupController
         // Fuzzy search for best city match
         const bestCityMatch = this.fuzzySearch(city, cities);
         return bestCityMatch?.id || null;
+    }
+
+    async onStorageChanged(previousStorage)
+    {
+        const changed = {};
+        for (const key of Object.keys(this.storage))
+        {
+            const previousValue = previousStorage[key];
+            const currentValue = this.storage[key];
+
+            // Deep compare for objects/arrays
+            if (typeof currentValue === "object" && currentValue !== null)
+            {
+                if (JSON.stringify(previousValue) !== JSON.stringify(currentValue))
+                {
+                    changed[key] = true;
+                }
+            }
+            else
+            {
+                if (previousValue !== currentValue)
+                {
+                    changed[key] = true;
+                }
+            }
+        }
+
+        for (const key of Object.keys(changed))
+        {
+            switch (key)
+            {
+                // case "isPrayed":
+                //     console.log("isPrayed changed:", this.storage.isPrayed);
+                //     break;
+
+                case "parameters":
+                    utils.timeLog(`Parameters changed from `, previousStorage.parameters, "to", this.storage.parameters);
+                    await this.onParametersChanged();
+                    break;
+
+                // case "prayerTimes":
+                //     console.log("Prayer times changed:", this.storage.prayerTimes.length, "entries");
+                //     break;
+
+                case "isNotificationsOn":
+                    console.log("Notification toggle changed:", this.storage.isNotificationsOn);
+                    break;
+
+                default:
+                    console.log(`Unhandled change in key: ${key}`);
+                    break;
+            }
+        }
+
+        return changed;
     }
 
     async onParametersChanged()

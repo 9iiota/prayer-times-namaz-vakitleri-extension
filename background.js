@@ -34,7 +34,7 @@ class BackgroundController
                         // TODO
                         break;
                     case "parameters":
-                        this.onParametersChanged(changes.parameters);
+                        // this.onParametersChanged(changes.parameters);
                         break;
                     case "prayerTimes":
                         this.onPrayerTimesChanged(changes.prayerTimes);
@@ -275,15 +275,15 @@ class BackgroundController
 
     async onParametersChanged(change)
     {
-        console.log(change.newValue);
-        this.storage.parameters = change.newValue;
-        utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
+        // console.log(change.newValue);
+        // this.storage.parameters = change.newValue;
+        // utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
     }
 
     async onPrayerTimesChanged(change)
     {
         this.storage.prayerTimes = change.newValue;
-        utils.timeLog('prayerTimes changed.');
+        utils.timeLog(`prayerTimes changed from ${change.oldValue?.length || 0} entries to ${change.newValue?.length || 0} entries`);
         this.startBadgeTask();
     }
 
