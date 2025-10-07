@@ -59,6 +59,7 @@ class PopupController
         let settingsButton = document.querySelector(".settings-button");
         if (settingsButton) return; // Already created
 
+        // TODO clean code look at notificationstoggle
         await fetch("icons/settings.svg")
             .then(res => res.text())
             .then(svg =>
@@ -83,9 +84,10 @@ class PopupController
         }
     }
 
-    async setupDropdown({ labelText, optionsMap, parentObject, objectKey })
+    async setupDropdown({ labelText, optionsMap, parentObject, objectKey, containerId = null })
     {
         const methodContainer = document.createElement("div");
+        if (containerId) methodContainer.id = containerId;
         methodContainer.className = "method-container";
         this.settingsPageGridContainer.appendChild(methodContainer);
 
@@ -134,6 +136,42 @@ class PopupController
             if (methodName.textContent === name) option.classList.add("selected");
             optionsContainer.appendChild(option);
         }
+    }
+
+    async createNotificationToggle(containerId)
+    {
+        const notificationsContainer = document.getElementById(containerId);
+        if (!notificationsContainer) return;
+
+        const flexContainer = document.createElement("div");
+        flexContainer.className = "flex-container";
+
+        const methodLabel = notificationsContainer.querySelector(".method-label");
+        notificationsContainer.insertBefore(flexContainer, methodLabel.nextSibling);
+
+        let notificationsButton = notificationsContainer.querySelector(".notifications-button");
+        if (notificationsButton) return; // Already created
+
+        const svg = await fetch("icons/bell.svg").then(res => res.text());
+        notificationsButton = document.createElement("div");
+        notificationsButton.className = "notifications-button";
+        notificationsButton.innerHTML = svg;
+        notificationsButton.addEventListener("click", () =>
+        {
+            // TODO turn minutes before button on or off
+            notificationsButton.classList.toggle("active");
+            this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
+            chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
+            utils.timeLog("Toggled notifications to:", this.storage.isNotificationsOn);
+        });
+
+        if (this.storage.isNotificationsOn) notificationsButton.classList.add("active");
+
+        flexContainer.appendChild(notificationsButton);
+
+        const methodSelect = notificationsContainer.querySelector(".method-select");
+        notificationsContainer.removeChild(methodSelect);
+        flexContainer.appendChild(methodSelect);
     }
 
     scheduleNominatimRequest(func)
@@ -635,18 +673,19 @@ document.addEventListener("DOMContentLoaded", async () =>
     popupController.createLogoIcon();
     popupController.createSettingsButton();
 
+    popupController.setupLocationInput();
+
     const dropdowns = [
         { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "calculationMethodId" },
         { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "asrMethodId" },
-        { labelText: "Notifications Minutes Before", optionsMap: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, parentObject: popupController.storage, objectKey: "notificationsMinutesBefore" },
+        { labelText: "Notifications Minutes Before", optionsMap: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, parentObject: popupController.storage, objectKey: "notificationsMinutesBefore", containerId: "notifications-container" },
     ];
-
     for (const config of dropdowns)
     {
         await popupController.setupDropdown(config);
     }
 
-    popupController.setupLocationInput();
+    popupController.createNotificationToggle("notifications-container");
 
     if (popupController.storage && popupController.storage.prayerTimes)
     {

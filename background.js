@@ -27,6 +27,7 @@ class BackgroundController
                         this.onIsPrayedChanged(changes.isPrayed);
                         break;
                     case "isNotificationsOn":
+                        this.onIsNotificationsOnChanged(changes.isNotificationsOn);
                         // TODO
                         break;
                     case "notificationsMinutesBefore":
@@ -264,6 +265,12 @@ class BackgroundController
         this.storage.isPrayed = change.newValue;
         this.updateBadgeColors();
         utils.timeLog('isPrayed changed from', change.oldValue, 'to', change.newValue);
+    }
+
+    async onIsNotificationsOnChanged(change)
+    {
+        this.storage.isNotificationsOn = change.newValue;
+        utils.timeLog('isNotificationsOn changed from', change.oldValue, 'to', change.newValue);
     }
 
     async onParametersChanged(change)

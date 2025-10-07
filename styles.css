@@ -69,18 +69,33 @@ body
     transition: filter 0.3s;
 }
 
-.settings-button:hover
+.notifications-button
+{
+    display: flex !important;
+    width: 14px;
+
+    background-color: #f3f4f6;
+    border-radius: var(--default-border-radius);
+    padding: var(--default-vertical-padding);
+
+    transition: filter 0.3s;
+}
+
+.settings-button:hover,
+.notifications-button:hover
 {
     cursor: pointer;
     filter: brightness(.9);
 }
 
-.settings-button:active
+.settings-button:active,
+.notifications-button:active
 {
     filter: brightness(.8);
 }
 
-.settings-button.active
+.settings-button.active,
+.notifications-button.active
 {
     filter: brightness(.8);
 }
@@ -345,6 +360,13 @@ body
 {
     /* font-size: small; */
     color: var(--primary-text-color);
+}
+
+.flex-container
+{
+    display: flex;
+    gap: var(--default-vertical-padding);
+    width: 100%;
 }
 
 .loader
