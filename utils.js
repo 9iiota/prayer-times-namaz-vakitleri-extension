@@ -33,10 +33,22 @@ export const PRAYER_CALCULATION_METHOD_IDS =
     14: "Germany Custom",
     15: "Russia Custom",
 };
+export const NOTIFICATIONS_MINUTES_BEFORE_OPTIONS =
+{
+    0: "At time of prayer",
+    5: "5 minutes before",
+    10: "10 minutes before",
+    15: "15 minutes before",
+    20: "20 minutes before",
+    25: "25 minutes before",
+    30: "30 minutes before",
+}
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const STORAGE_DEFAULTS =
 {
     isPrayed: false,
+    isNotificationsOn: true,
+    notificationsMinutesBefore: "0",
     parameters:
     {
         countryCode: null,

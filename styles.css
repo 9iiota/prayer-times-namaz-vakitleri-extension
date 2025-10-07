@@ -1,5 +1,7 @@
 :root
 {
+    --primary-text-color: #374151;
+    --secondary-text-color: #6b7280;
     --default-border-radius: 6px;
     --default-vertical-padding: 6px;
 }
@@ -51,7 +53,7 @@ body
 
 .title
 {
-    color: #374151;
+    color: var(--primary-text-color);
     font-weight: bold;
 }
 
@@ -153,7 +155,7 @@ body
 
 .location-name
 {
-    color: #374151;
+    color: var(--primary-text-color);
     font-weight: bold;
     display: inline;
     text-decoration: underline;
@@ -197,13 +199,13 @@ body
 
 .prayer-name
 {
-    color: #374151;
+    color: var(--primary-text-color);
     font-weight: bold;
 }
 
 .prayer-time
 {
-    color: #6b7280;
+    color: var(--secondary-text-color);
 }
 
 #current-prayer
@@ -232,7 +234,7 @@ body
 .custom-select select
 {
     background-color: #f3f4f6;
-    color: #374151;
+    color: var(--primary-text-color);
     width: 100%;
     text-align: center;
     padding: var(--default-vertical-padding);
@@ -259,7 +261,7 @@ body
     text-align: center;
     margin: 0 8px 0 8px;
     border-radius: var(--default-border-radius);
-    color: #6b7280;
+    color: var(--secondary-text-color);
 }
 
 .location-results div
@@ -299,16 +301,23 @@ body
     display: none;
     text-align: center;
     border-radius: var(--default-border-radius);
-    color: #6b7280;
+    color: var(--secondary-text-color);
     font-size: x-small;
     width: 100%;
-    top: 100%;
+    top: 75%;
 }
 
 .method-options>div
 {
     padding: var(--default-vertical-padding);
     border-bottom: 1px solid #eee;
+}
+
+.method-options>.selected
+{
+    font-weight: bold;
+    color: var(--primary-text-color);
+    background-color: #baebff;
 }
 
 .method-options>div:last-child
@@ -335,7 +344,7 @@ body
 .method-label
 {
     /* font-size: small; */
-    color: #374151;
+    color: var(--primary-text-color);
 }
 
 .loader
@@ -345,7 +354,7 @@ body
     height: 48px;
     border-radius: 50%;
     position: absolute;
-    animation: rotate 1s linear infinite
+    animation: rotate .5s linear infinite
 }
 
 .loader::before,
@@ -357,7 +366,7 @@ body
     inset: 0px;
     border-radius: 50%;
     border: 5px solid #FFF;
-    animation: prixClipFix 2s ease-in-out infinite alternate;
+    animation: prixClipFix 1s ease-in-out infinite alternate;
 }
 
 .loader::after

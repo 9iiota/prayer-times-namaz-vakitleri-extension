@@ -83,7 +83,7 @@ class PopupController
         }
     }
 
-    async setupDropdown({ labelText, optionsMap, parameterKey })
+    async setupDropdown({ labelText, optionsMap, parentObject, objectKey })
     {
         const methodContainer = document.createElement("div");
         methodContainer.className = "method-container";
@@ -107,7 +107,7 @@ class PopupController
         methodContainer.appendChild(optionsContainer);
 
         // Set chosen option
-        methodName.textContent = optionsMap[this.storage.parameters[parameterKey]];
+        methodName.textContent = optionsMap[parentObject[objectKey]];
 
         // Toggle dropdown
         methodSelect.addEventListener("click", () =>
@@ -122,12 +122,16 @@ class PopupController
             option.textContent = name;
             option.addEventListener("click", async () =>
             {
-                this.storage.parameters[parameterKey] = id;
-                await chrome.storage.local.set({ parameters: this.storage.parameters });
-                utils.timeLog("Updated parameters:", this.storage.parameters);
+                parentObject[objectKey] = id;
+                await chrome.storage.local.set(this.storage);
+                this.toggleLoadingSpinner();
+                await this.onParametersChanged(); // TODO maybe change to onStorageChanged and only update times if parametesr are changed
+                this.toggleLoadingSpinner();
+                utils.timeLog(`Updated ${objectKey} to:`, id);
                 methodName.textContent = name;
                 optionsContainer.style.display = "none";
             });
+            if (methodName.textContent === name) option.classList.add("selected");
             optionsContainer.appendChild(option);
         }
     }
@@ -632,8 +636,9 @@ document.addEventListener("DOMContentLoaded", async () =>
     popupController.createSettingsButton();
 
     const dropdowns = [
-        { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parameterKey: "calculationMethodId" },
-        { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parameterKey: "asrMethodId" }
+        { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "calculationMethodId" },
+        { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "asrMethodId" },
+        { labelText: "Notifications Minutes Before", optionsMap: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, parentObject: popupController.storage, objectKey: "notificationsMinutesBefore" },
     ];
 
     for (const config of dropdowns)
@@ -652,24 +657,24 @@ document.addEventListener("DOMContentLoaded", async () =>
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
     {
-        // dropdowns.forEach((dropdown, i) =>
-        // {
-        //     const methodSelect = document.querySelectorAll(".method-select")[i];
-        //     const optionsContainer = document.querySelectorAll(".method-options")[i];
-        //     if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
-        //     {
-        //         optionsContainer.style.display = "none";
-        //     }
-        // });
+        dropdowns.forEach((dropdown, i) =>
+        {
+            const methodSelect = document.querySelectorAll(".method-select")[i];
+            const optionsContainer = document.querySelectorAll(".method-options")[i];
+            if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
+            {
+                optionsContainer.style.display = "none";
+            }
+        });
 
-        // // Location dropdown
-        // const locationContainer = document.querySelector(".location-results");
-        // const locationSpan = document.querySelector(".location-name");
-        // if (!locationContainer.contains(event.target) && event.target !== locationSpan)
-        // {
-        //     locationContainer.style.display = "none";
-        //     locationSpan.contentEditable = false;
-        // }
+        // Location dropdown
+        const locationContainer = document.querySelector(".location-results");
+        const locationSpan = document.querySelector(".location-name");
+        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
+        {
+            locationContainer.style.display = "none";
+            locationSpan.contentEditable = false;
+        }
     });
 
     document.addEventListener("keydown", (event) =>

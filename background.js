@@ -26,6 +26,12 @@ class BackgroundController
                     case "isPrayed":
                         this.onIsPrayedChanged(changes.isPrayed);
                         break;
+                    case "isNotificationsOn":
+                        // TODO
+                        break;
+                    case "notificationsMinutesBefore":
+                        // TODO
+                        break;
                     case "parameters":
                         this.onParametersChanged(changes.parameters);
                         break;
@@ -73,6 +79,18 @@ class BackgroundController
         }
     }
 
+    sendNotification(message)
+    {
+        const notificationOptions = {
+            iconUrl: "icons/icon128.png",
+            priority: 2,
+            message: message,
+            title: "Prayer Times",
+            type: "basic",
+        };
+        chrome.notifications.create("", notificationOptions);
+    }
+
     async updateBadge()
     {
         if (!this.storage.prayerTimes || this.storage.prayerTimes.length === 0)
@@ -113,12 +131,19 @@ class BackgroundController
         }
         else if (this.nextPrayerIndex !== nextPrayerIndex)
         {
-            this.nextPrayerIndex = nextPrayerIndex;
-            console.log(`Next prayer changed from index ${this.nextPrayerIndex} to ${nextPrayerIndex}`);
+            // If notifications are on and the notificationsMinutesBefore is 0, send a notification for the previous nextPrayerIndex before it changes
+            if (this.storage.isNotificationsOn && this.storage.notificationsMinutesBefore === "0")
+            {
+                this.sendNotification(`It's time for ${utils.PRAYER_NAMES[this.nextPrayerIndex]} prayer now!`);
+            }
 
-            this.todayPrayerTimes = await this.getDatePrayerTimes(); // Refresh today's prayer times in case date changed
+            utils.timeLog(`Prayer changed from index ${this.nextPrayerIndex} to ${nextPrayerIndex}`);
+            this.nextPrayerIndex = nextPrayerIndex;
 
             this.storage.isPrayed = false;
+            this.todayPrayerTimes = await this.getDatePrayerTimes(); // Refresh today's prayer times in case date changed
+
+
             await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
             chrome.runtime.sendMessage({ action: "prayerChanged", data: { todayPrayerTimes: this.todayPrayerTimes, isPrayed: this.storage.isPrayed } })
                 .catch((error) =>
@@ -137,6 +162,11 @@ class BackgroundController
         }
 
         this.updateBadgeColors();
+
+        if (this.storage.isNotificationsOn && timeDifference === `${this.storage.notificationsMinutesBefore}m`)
+        {
+            this.sendNotification(`It's time for ${utils.PRAYER_NAMES[nextPrayerIndex]} prayer in ${this.storage.notificationsMinutesBefore} minutes!`);
+        }
 
         if (timeDifference.includes("s"))
         {
@@ -225,6 +255,7 @@ class BackgroundController
 
             // chrome.runtime.sendMessage({ action: "prayerChanged", data: this.todayPrayerTimes })
             //     .catch((error) => { }); // Ignore errors if no popup is open TODO Fix
+            // TODO
         }
     }
 
