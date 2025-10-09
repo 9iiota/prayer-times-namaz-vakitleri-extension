@@ -162,6 +162,7 @@ svg>path
 {
     display: grid;
     gap: var(--primary-gap);
+    padding-bottom: var(--primary-padding);
     padding-top: var(--primary-padding);
 }
 
@@ -299,7 +300,10 @@ svg>path
     animation: rotate .5s linear infinite;
     border-radius: 50%;
     height: 48px;
+    left: 50%;
     position: absolute;
+    transform: translate(-50%, -50%);
+    top: 50%;
     width: 48px;
     z-index: 2000;
 }
@@ -326,12 +330,12 @@ svg>path
 {
     from
     {
-        transform: rotate(0deg);
+        transform: translate(-50%, -50%) rotate(0deg);
     }
 
     to
     {
-        transform: rotate(360deg);
+        transform: translate(-50%, -50%) rotate(360deg);
     }
 }
 

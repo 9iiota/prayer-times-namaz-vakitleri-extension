@@ -478,6 +478,11 @@ class PopupController
             // Highlight current prayer
             if (index === currentPrayerIndex)
             {
+                // Clone to remove previous event listeners
+                const newButton = prayerContainer.cloneNode(true);
+                prayerContainer.replaceWith(newButton);
+                prayerContainer = newButton;
+
                 prayerContainer.id = "current-prayer";
                 this.updateCurrentPrayerBackgroundColor();
 
