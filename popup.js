@@ -443,15 +443,18 @@ class PopupController
             element.style.backgroundColor = "";
         });
 
-        for (const [i, name] of utils.PRAYER_NAMES.entries())
+        for (const [index, name] of utils.PRAYER_NAMES.entries())
         {
             // Check if prayer container already exist in the DOM
             // If it does, only update the time and current-prayer id
-            let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[i];
+            let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[index];
             if (!prayerContainer)
             {
+                // if (name === "Sun") prayerContainer.style.pointerEvents = "none"; // Disable pointer events for Sun
+                // TODO fix
+
                 // Create prayer elements
-                prayerContainer = document.createElement("div");
+                prayerContainer = document.createElement("button");
                 prayerContainer.className = "prayer";
                 this.mainPageGridContainer.appendChild(prayerContainer);
 
@@ -467,10 +470,10 @@ class PopupController
 
             // Update prayer time
             const timeSpan = prayerContainer.querySelector(".prayer-time");
-            timeSpan.textContent = dailyPrayerTimes.times[i];
+            timeSpan.textContent = dailyPrayerTimes.times[index];
 
             // Highlight current prayer
-            if (i === currentPrayerIndex)
+            if (index === currentPrayerIndex)
             {
                 prayerContainer.id = "current-prayer";
                 this.updateCurrentPrayerBackgroundColor();

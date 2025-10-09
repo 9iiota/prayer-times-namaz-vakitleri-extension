@@ -2,47 +2,109 @@
 {
     --primary-text-color: #374151;
     --secondary-text-color: #6b7280;
-    --default-border-radius: 6px;
-    --default-vertical-padding: 6px;
+    --primary-border-radius: .4rem;
+    --primary-padding: .4rem;
+    --primary-margin: .4rem;
+    --primary-gap: .4rem;
+    --primary-font-size: 1.05rem;
+    --primary-background-color: #f3f4f6;
+    --primary-transition-duration: 0.2s;
+    --primary-box-shadow: 0px 1px 0px 0px #9b9c9d;
+    --bold-font-weight: 700;
+    --button-hover-filter: brightness(.9);
 }
 
 html,
 body
 {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    font-size: var(--primary-font-size);
+    max-height: 600px;
+    max-width: 800px;
     margin: 0;
     padding: 0;
-    background-color: #ffffff;
-    font-weight: 100;
-    font-size: large;
-    display: flex;
+    width: 260px;
+}
+
+button
+{
+    all: unset;
+    background: none;
+    background-color: var(--primary-background-color);
+    border: none;
+    border-radius: var(--primary-border-radius);
+    box-shadow: var(--primary-box-shadow);
+    color: inherit;
+    cursor: pointer;
+    display: grid;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
     justify-content: center;
-    align-items: center;
+    justify-items: center;
+    padding: var(--primary-padding);
+    transition: filter var(--primary-transition-duration);
+}
 
-    max-width: 800px;
-    max-height: 600px;
+button:hover
+{
+    filter: var(--button-hover-filter);
+}
 
-    /* height: 100%; */
-    /* height: 556px; */
-    width: 100%;
-    /* width: 260px; */
+button:not(#current-prayer).prayer:hover
+{
+    cursor: default;
+    filter: none;
+}
+
+button#current-prayer:hover
+{
+    transition: var(--primary-transition-duration);
+}
+
+/* TODO give option to toggle */
+button.horizontal
+{
+    display: flex;
+    gap: var(--primary-gap);
 }
 
 .popup-container
 {
-    display: block;
-    width: 260px;
-    height: 100%;
+    margin: var(--primary-margin);
 }
 
 .header
 {
-    display: flex;
-    justify-content: flex-end;
-    border-bottom: 1px solid #ccc;
-    padding: 6px 0 6px 0;
-    margin: 0 6px 0 6px;
     align-items: center;
+    border-bottom: 1px solid #ccc;
+    display: flex;
     justify-content: space-between;
+    padding-bottom: var(--primary-padding);
+}
+
+.page
+{
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.grid-container
+{
+    display: grid;
+    gap: var(--primary-padding);
+    padding-top: var(--primary-padding);
+}
+
+.prayer-name
+{
+    color: var(--primary-text-color);
+    font-weight: var(--bold-font-weight)
+}
+
+.prayer-time
+{
+    color: var(--secondary-text-color);
 }
 
 .logo-icon
@@ -63,8 +125,8 @@ body
     width: 24px;
 
     background-color: #f3f4f6;
-    border-radius: var(--default-border-radius);
-    padding: var(--default-vertical-padding);
+    border-radius: var(--primary-border-radius);
+    padding: var(--primary-padding);
 
     transition: filter 0.3s;
 }
@@ -75,8 +137,8 @@ body
     width: 14px;
 
     background-color: #f3f4f6;
-    border-radius: var(--default-border-radius);
-    padding: var(--default-vertical-padding);
+    border-radius: var(--primary-border-radius);
+    padding: var(--primary-padding);
 
     transition: filter 0.3s;
 }
@@ -111,15 +173,6 @@ body
     transform: translateX(-100%);
 }
 
-.page
-{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    flex-shrink: 0;
-}
-
 #settings-page .grid-container>div
 {
     border-bottom: 1px solid #ccc;
@@ -145,18 +198,9 @@ body
     border-right: 1px solid #ccc;
 }
 
-.grid-container
-{
-    display: grid;
-    gap: var(--default-vertical-padding);
-    width: 100%;
-    padding: var(--default-vertical-padding) 0 var(--default-vertical-padding) 0;
-    /* padding: var(--default-vertical-padding) 28px var(--default-vertical-padding) 28px; */
-}
-
 .grid-container>div
 {
-    margin: 0 var(--default-vertical-padding) 0 var(--default-vertical-padding);
+    margin: 0 var(--primary-padding) 0 var(--primary-padding);
 }
 
 .location-container
@@ -182,88 +226,15 @@ body
     filter: brightness(1.9);
 }
 
-.prayer
-{
-    background-color: #f3f4f6;
-    border-radius: var(--default-border-radius);
-    /* padding: var(--default-vertical-padding) 60px var(--default-vertical-padding) 60px; */
-    padding: var(--default-vertical-padding);
-    text-align: center;
-    display: block;
-    /* TODO give choice of block or flex */
-    gap: 16px;
-    align-items: center;
-    justify-content: center;
-}
-
 /* Sun time can't shown as prayed */
-.prayer:nth-of-type(5)
+/* .prayer:nth-of-type(5)
 {
     pointer-events: none;
-}
-
-.prayer>span
-{
-    display: block;
-}
+} */
 
 .time-adjust
 {
     font-weight: bold;
-}
-
-.prayer-name
-{
-    color: var(--primary-text-color);
-    font-weight: bold;
-}
-
-.prayer-time
-{
-    color: var(--secondary-text-color);
-}
-
-#current-prayer
-{
-    transition: background-color .3s, filter .3s;
-    background-color: #baebff;
-}
-
-/* #current-prayer.prayed
-{
-    background-color: #baffde;
-} */
-
-#current-prayer:hover
-{
-    cursor: pointer;
-    filter: brightness(.9);
-}
-
-.custom-select
-{
-    display: flex;
-    justify-content: center;
-}
-
-.custom-select select
-{
-    background-color: #f3f4f6;
-    color: var(--primary-text-color);
-    width: 100%;
-    text-align: center;
-    padding: var(--default-vertical-padding);
-    font-size: xx-small;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
-    outline: none;
-}
-
-.custom-select select:focus
-{
-    outline: none;
-    box-shadow: none;
 }
 
 .location-results
@@ -275,13 +246,13 @@ body
     display: none;
     text-align: center;
     margin: 0 8px 0 8px;
-    border-radius: var(--default-border-radius);
+    border-radius: var(--primary-border-radius);
     color: var(--secondary-text-color);
 }
 
 .location-results div
 {
-    padding: var(--default-vertical-padding);
+    padding: var(--primary-padding);
     border-bottom: 1px solid #eee;
     cursor: pointer;
 }
@@ -294,10 +265,10 @@ body
 .method-select
 {
     text-align: center;
-    padding: var(--default-vertical-padding) 0 var(--default-vertical-padding) 0;
+    padding: var(--primary-padding) 0 var(--primary-padding) 0;
     font-size: x-small;
     background-color: #f3f4f6;
-    border-radius: var(--default-border-radius);
+    border-radius: var(--primary-border-radius);
     width: 100%;
 }
 
@@ -315,7 +286,7 @@ body
     z-index: 1000;
     display: none;
     text-align: center;
-    border-radius: var(--default-border-radius);
+    border-radius: var(--primary-border-radius);
     color: var(--secondary-text-color);
     font-size: x-small;
     width: 100%;
@@ -324,7 +295,7 @@ body
 
 .method-options>div
 {
-    padding: var(--default-vertical-padding);
+    padding: var(--primary-padding);
     border-bottom: 1px solid #eee;
 }
 
@@ -365,7 +336,7 @@ body
 .flex-container
 {
     display: flex;
-    gap: var(--default-vertical-padding);
+    gap: var(--primary-padding);
     width: 100%;
 }
 
