@@ -97,7 +97,7 @@ class PopupController
         methodLabel.textContent = labelText;
         methodContainer.appendChild(methodLabel);
 
-        const methodSelect = document.createElement("div");
+        const methodSelect = document.createElement("button");
         methodSelect.className = "method-select";
         methodContainer.appendChild(methodSelect);
 
@@ -174,22 +174,37 @@ class PopupController
         let notificationsButton = notificationsContainer.querySelector("#notifications-button");
         if (notificationsButton) return; // Already created
 
-        const svg = await fetch("icons/bell.svg").then(res => res.text());
+        const svgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
+        const bellSvg = await fetch(svgPath).then(res => res.text());
+
         notificationsButton = document.createElement("button");
         notificationsButton.id = "notifications-button";
         notificationsButton.className = "icon-button";
-        notificationsButton.innerHTML = svg;
-        notificationsButton.addEventListener("click", () =>
+        notificationsButton.innerHTML = bellSvg;
+        flexContainer.appendChild(notificationsButton);
+
+        if (this.storage.isNotificationsOn)
         {
-            notificationsButton.classList.toggle("active");
+            notificationsButton.classList.add("active");
+        }
+
+        notificationsButton.addEventListener("click", async () =>
+        {
+            const svgElement = notificationsButton.querySelector("svg");
+            console.log(svgElement);
+            if (!svgElement) return;
+
+            // Toggle state + fetch new SVG
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
-            chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
+            const newSvgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
+            const newSvg = await fetch(newSvgPath).then(res => res.text());
+            notificationsButton.innerHTML = newSvg;
+            notificationsButton.classList.toggle("active");
+
+            // Update storage
+            await chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
             utils.timeLog("Toggled notifications to:", this.storage.isNotificationsOn);
         });
-
-        if (this.storage.isNotificationsOn) notificationsButton.classList.add("active");
-
-        flexContainer.appendChild(notificationsButton);
 
         const methodSelect = notificationsContainer.querySelector(".method-select");
         notificationsContainer.removeChild(methodSelect);
@@ -325,20 +340,6 @@ class PopupController
                 locationResultsContainer.appendChild(option);
             }
         }
-
-        // Position results container below the location span
-        // Regardless of whether prayers are in the DOM or not
-        // const rect = locationName.getBoundingClientRect();
-        // if (!document.querySelector(".prayer"))
-        // {
-        //     locationResultsContainer.style.position = "relative";
-        //     locationResultsContainer.style.top = "auto";
-        // }
-        // else
-        // {
-        //     locationResultsContainer.style.position = "absolute";
-        //     locationResultsContainer.style.top = `${rect.bottom / 2}px`;
-        // }
         locationResultsContainer.style.display = "block";
     }
 
