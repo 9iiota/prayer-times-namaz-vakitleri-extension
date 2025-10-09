@@ -56,7 +56,7 @@ class PopupController
 
     async createSettingsButton()
     {
-        let settingsButton = document.querySelector(".settings-button");
+        let settingsButton = document.getElementById("settings-button");
         if (settingsButton) return; // Already created
 
         // TODO clean code look at notificationstoggle
@@ -64,8 +64,9 @@ class PopupController
             .then(res => res.text())
             .then(svg =>
             {
-                settingsButton = document.createElement("div");
-                settingsButton.className = "settings-button";
+                settingsButton = document.createElement("button");
+                settingsButton.id = "settings-button";
+                settingsButton.className = "icon-button";
                 settingsButton.innerHTML = svg;
                 settingsButton.addEventListener("click", () =>
                 {
@@ -105,7 +106,7 @@ class PopupController
         methodSelect.appendChild(methodName);
 
         const optionsContainer = document.createElement("div");
-        optionsContainer.className = "method-options";
+        optionsContainer.className = "options";
         methodContainer.appendChild(optionsContainer);
 
         // Set chosen option
@@ -170,12 +171,13 @@ class PopupController
         const methodLabel = notificationsContainer.querySelector(".method-label");
         notificationsContainer.insertBefore(flexContainer, methodLabel.nextSibling);
 
-        let notificationsButton = notificationsContainer.querySelector(".notifications-button");
+        let notificationsButton = notificationsContainer.querySelector("#notifications-button");
         if (notificationsButton) return; // Already created
 
         const svg = await fetch("icons/bell.svg").then(res => res.text());
-        notificationsButton = document.createElement("div");
-        notificationsButton.className = "notifications-button";
+        notificationsButton = document.createElement("button");
+        notificationsButton.id = "notifications-button";
+        notificationsButton.className = "icon-button";
         notificationsButton.innerHTML = svg;
         notificationsButton.addEventListener("click", () =>
         {
@@ -277,7 +279,7 @@ class PopupController
     renderLocationResults(locationResults)
     {
         const locationName = document.querySelector(".location-name");
-        const locationResultsContainer = document.querySelector(".location-results");
+        const locationResultsContainer = document.querySelector(".location-container>.options");
         locationResultsContainer.innerHTML = "";
 
         if (locationResults.length === 0)
@@ -326,17 +328,17 @@ class PopupController
 
         // Position results container below the location span
         // Regardless of whether prayers are in the DOM or not
-        const rect = locationName.getBoundingClientRect();
-        if (!document.querySelector(".prayer"))
-        {
-            locationResultsContainer.style.position = "relative";
-            locationResultsContainer.style.top = "auto";
-        }
-        else
-        {
-            locationResultsContainer.style.position = "absolute";
-            locationResultsContainer.style.top = `${rect.bottom + window.scrollY}px`;
-        }
+        // const rect = locationName.getBoundingClientRect();
+        // if (!document.querySelector(".prayer"))
+        // {
+        //     locationResultsContainer.style.position = "relative";
+        //     locationResultsContainer.style.top = "auto";
+        // }
+        // else
+        // {
+        //     locationResultsContainer.style.position = "absolute";
+        //     locationResultsContainer.style.top = `${rect.bottom / 2}px`;
+        // }
         locationResultsContainer.style.display = "block";
     }
 
@@ -397,9 +399,9 @@ class PopupController
         });
         locationContainer.appendChild(locationName);
 
-        const locationResults = document.createElement("div");
-        locationResults.className = "location-results";
-        locationContainer.appendChild(locationResults);
+        const optionsContainer = document.createElement("div");
+        optionsContainer.className = "options";
+        locationContainer.appendChild(optionsContainer);
     }
 
     getPrayerTimesByDate(prayerTimes, date)
@@ -778,7 +780,7 @@ document.addEventListener("DOMContentLoaded", async () =>
         dropdowns.forEach((dropdown, i) =>
         {
             const methodSelect = document.querySelectorAll(".method-select")[i];
-            const optionsContainer = document.querySelectorAll(".method-options")[i];
+            const optionsContainer = document.querySelectorAll(".method-container>.options")[i];
             if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
             {
                 optionsContainer.style.display = "none";
@@ -786,7 +788,7 @@ document.addEventListener("DOMContentLoaded", async () =>
         });
 
         // Location dropdown
-        const locationContainer = document.querySelector(".location-results");
+        const locationContainer = document.querySelector(".location-container>.options");
         const locationSpan = document.querySelector(".location-name");
         if (!locationContainer.contains(event.target) && event.target !== locationSpan)
         {
