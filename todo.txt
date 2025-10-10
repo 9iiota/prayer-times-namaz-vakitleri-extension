@@ -1,1 +1,1 @@
-- after first time entering location and less than 1 hour until next prayer, currentprayer should be red instead of default blue
+- update prayer times when its getting too little dates left

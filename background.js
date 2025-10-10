@@ -37,7 +37,14 @@ class BackgroundController
                         // this.onParametersChanged(changes.parameters);
                         break;
                     case "prayerTimes":
-                        this.onPrayerTimesChanged(changes.prayerTimes);
+                        await this.onPrayerTimesChanged(changes.prayerTimes);
+
+                        // notify popup (if open)
+                        chrome.runtime.sendMessage({
+                            action: "prayerTimesProcessed",
+                            result: { status: "done" }
+                        });
+
                         break;
                     default:
                         break;

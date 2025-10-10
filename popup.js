@@ -425,6 +425,8 @@ class PopupController
             }
             else if (currentPrayerContainer !== sunPrayerContainer)
             {
+                // doesnt properly set to red on the first time setting location
+                // because the badge text is not updated yet from background.js
                 const badgeText = await chrome.action.getBadgeText({});
                 if (badgeText.includes("m"))
                 {
@@ -453,9 +455,6 @@ class PopupController
             let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[index];
             if (!prayerContainer)
             {
-                // if (name === "Sun") prayerContainer.style.pointerEvents = "none"; // Disable pointer events for Sun
-                // TODO fix
-
                 // Create prayer elements
                 prayerContainer = document.createElement("button");
                 prayerContainer.className = "prayer";
@@ -658,6 +657,23 @@ class PopupController
                 if (prayerTimes.length === 0) throw new Error('No prayer times found from official site.');
                 await chrome.storage.local.set({ prayerTimes });
                 utils.timeLog('Fetched and stored prayer times from official site:', prayerTimes);
+
+                // Wait for background script to set badge text
+                // so that we can correctly highlight the current prayer's color
+                // when we update the prayer times display
+                const result = await new Promise((resolve) =>
+                {
+                    const listener = (msg) =>
+                    {
+                        if (msg.action === "prayerTimesProcessed")
+                        {
+                            chrome.runtime.onMessage.removeListener(listener);
+                            resolve(msg.result);
+                        }
+                    };
+                    chrome.runtime.onMessage.addListener(listener);
+                });
+
                 this.updatePrayerTimes(prayerTimes);
                 return;
             }
