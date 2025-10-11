@@ -377,5 +377,6 @@ svg>path
 {
     display: flex;
     gap: var(--primary-padding);
+    justify-content: center;
     width: 100%;
 }

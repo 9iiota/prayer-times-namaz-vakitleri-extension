@@ -625,7 +625,10 @@ class PopupController
         let displayToggleButton = document.getElementById("display-toggle");
         if (displayToggleButton) return;
 
-        const settingsSvg = await fetch("icons/settings.svg").then(res => res.text());
+        const container = document.createElement("div");
+        container.className = "flex-container";
+
+        const settingsSvg = await fetch("icons/align-justify-space-around.svg").then(res => res.text());
         displayToggleButton = document.createElement("button");
         displayToggleButton.id = "display-toggle";
         displayToggleButton.className = "icon-button";
@@ -635,12 +638,28 @@ class PopupController
             const prayerElements = document.querySelectorAll(".prayer");
             prayerElements.forEach(el =>
             {
-                el.classList.toggle("display-flex");
+                el.classList.add("display-flex");
+            });
+        });
+
+        const settings2Svg = await fetch("icons/align-space-around.svg").then(res => res.text());
+        const displayToggleButton2 = document.createElement("button");
+        displayToggleButton2.id = "display-toggle-2";
+        displayToggleButton2.className = "icon-button";
+        displayToggleButton2.innerHTML = settings2Svg;
+        displayToggleButton2.addEventListener("click", () =>
+        {
+            const prayerElements = document.querySelectorAll(".prayer");
+            prayerElements.forEach(el =>
+            {
+                el.classList.remove("display-flex");
             });
         });
 
         // Append
-        this.settingsPageGridContainer.append(displayToggleButton);
+        container.append(displayToggleButton);
+        container.append(displayToggleButton2);
+        this.settingsPageGridContainer.appendChild(container);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
