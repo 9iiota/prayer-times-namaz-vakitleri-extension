@@ -478,6 +478,7 @@ class PopupController
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dropdowns                                                                                      //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // TODO clean from here
     async appendDropdown({ labelText, optionsDictionary, controllerParentObject, controllerParentObjectKey, containerId = null })
     {
         const methodContainer = document.createElement("div");
@@ -661,26 +662,28 @@ document.addEventListener("DOMContentLoaded", async () =>
     }
     popupController.createNotificationToggle("notifications-container");
 
-    // // Close dropdowns when clicking outside
-    // document.addEventListener("click", (event) =>
-    // {
-    //     dropdowns.forEach((dropdown, i) =>
-    //     {
-    //         const methodSelect = document.querySelectorAll(".method-select")[i];
-    //         const optionsContainer = document.querySelectorAll(".method-container>.options")[i];
-    //         if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
-    //         {
-    //             optionsContainer.style.display = "none";
-    //         }
-    //     });
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", (event) =>
+    {
+        // Method dropdowns
+        const dropdowns = document.querySelectorAll(".method-container");
+        dropdowns.forEach(dropdown =>
+        {
+            const methodSelect = dropdown.querySelector(".method-select");
+            const optionsContainer = dropdown.querySelector(".method-select-wrapper>.options");
+            if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
+            {
+                optionsContainer.style.display = "none";
+            }
+        });
 
-    //     // Location dropdown
-    //     const locationContainer = document.querySelector(".location-container>.options");
-    //     const locationSpan = document.querySelector(".location-name");
-    //     if (!locationContainer.contains(event.target) && event.target !== locationSpan)
-    //     {
-    //         locationContainer.style.display = "none";
-    //         locationSpan.contentEditable = false;
-    //     }
-    // });
+        // Location dropdown
+        const locationContainer = document.querySelector(".location-container>.options");
+        const locationSpan = document.querySelector(".location-name");
+        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
+        {
+            locationContainer.style.display = "none";
+            locationSpan.contentEditable = false;
+        }
+    });
 });
