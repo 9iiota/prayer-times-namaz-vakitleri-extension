@@ -195,6 +195,12 @@ class PopupController
             switch (key)
             {
                 case "isPrayed":
+                    // Update storage
+                    chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
+                    utils.timeLog("isPrayed changed to:", this.storage.isPrayed);
+
+                    // Update current prayer background color
+                    await this.updateCurrentPrayerBackgroundColor();
                     break;
                 case "isNotificationsOn":
                     // TODO
@@ -323,9 +329,6 @@ class PopupController
 
                     // Update storage
                     await this.onStorageChange(previousStorage);
-
-                    // Update background color
-                    this.updateCurrentPrayerBackgroundColor();
                 });
 
                 // Update background color
@@ -615,6 +618,31 @@ class PopupController
         });
     }
 
+    // TODO clean and save to storage
+    async appendPrayerDisplayToggleButton()
+    {
+        // Check if already appended
+        let displayToggleButton = document.getElementById("display-toggle");
+        if (displayToggleButton) return;
+
+        const settingsSvg = await fetch("icons/settings.svg").then(res => res.text());
+        displayToggleButton = document.createElement("button");
+        displayToggleButton.id = "display-toggle";
+        displayToggleButton.className = "icon-button";
+        displayToggleButton.innerHTML = settingsSvg;
+        displayToggleButton.addEventListener("click", () =>
+        {
+            const prayerElements = document.querySelectorAll(".prayer");
+            prayerElements.forEach(el =>
+            {
+                el.classList.toggle("display-flex");
+            });
+        });
+
+        // Append
+        this.settingsPageGridContainer.append(displayToggleButton);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Miscellaneous                                                                                  //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -661,6 +689,7 @@ document.addEventListener("DOMContentLoaded", async () =>
         await popupController.appendDropdown(config);
     }
     popupController.createNotificationToggle("notifications-container");
+    popupController.appendPrayerDisplayToggleButton();
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
