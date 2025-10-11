@@ -1,1 +1,4 @@
 - update prayer times when its getting too little dates left
+
+
+- doesnt properly set current prayer background color to red on the first time setting location, because the badge text is not updated yet from background.js?

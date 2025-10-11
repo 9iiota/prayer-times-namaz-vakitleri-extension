@@ -1,6 +1,4 @@
 import * as utils from "./utils.js";
-import { countryMap } from "./country-map.js";
-import Fuse from "./libs/fuse.min.mjs";
 
 class PopupController
 {
@@ -9,10 +7,10 @@ class PopupController
         this.storage = storage;
         this.mainPageGridContainer = document.querySelectorAll(".grid-container")[0];
         this.settingsPageGridContainer = document.querySelectorAll(".grid-container")[1];
-        this.lastRequestTime = 0;
-        this.requestQueue = Promise.resolve();
-        this.debugModeSequence = ["d", "e", "b", "u", "g", "m", "o", "d", "e"];
-        this.sequenceIndex = 0;
+
+        this.nominatimRequestQueue = Promise.resolve();
+        this.nominatimRequestIntervalMs = 2000; // Nominatim usage policy allows 1 request per second
+        this.lastNominatimRequestTime = 0;
 
         // Listen for messages from background.js
         chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>
@@ -36,48 +34,49 @@ class PopupController
         return new PopupController(storage);
     }
 
-    createLogoIcon()
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Header                                                                                         //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    async appendLogoIcon()
     {
-        let logoIcon = document.querySelector(".logo-icon");
-        if (logoIcon) return; // Already created
+        // Check if already appended
+        let logoIcon = document.getElementById("logo-icon");
+        if (logoIcon) return;
 
-        fetch("icons/icon.svg")
-            .then(res => res.text())
-            .then(svg =>
-            {
-                const logoIcon = document.createElement("div");
-                logoIcon.className = "logo-icon";
-                logoIcon.innerHTML = svg;
+        // Create logo icon element
+        const logoSvg = await fetch("icons/icon.svg").then(res => res.text());
+        logoIcon = document.createElement("div");
+        logoIcon.id = "logo-icon";
+        logoIcon.innerHTML = logoSvg;
 
-                const header = document.querySelector(".header");
-                header.prepend(logoIcon);
-            });
+        // Prepend to header
+        const header = document.querySelector(".header");
+        header.prepend(logoIcon);
     }
 
-    async createSettingsButton()
+    async appendSettingsButton()
     {
+        // Check if already appended
         let settingsButton = document.getElementById("settings-button");
-        if (settingsButton) return; // Already created
+        if (settingsButton) return;
 
-        // TODO clean code look at notificationstoggle
-        await fetch("icons/settings.svg")
-            .then(res => res.text())
-            .then(svg =>
-            {
-                settingsButton = document.createElement("button");
-                settingsButton.id = "settings-button";
-                settingsButton.className = "icon-button";
-                settingsButton.innerHTML = svg;
-                settingsButton.addEventListener("click", () =>
-                {
-                    document.querySelector(".content").classList.toggle("show-settings");
-                    settingsButton.classList.toggle("active");
-                });
+        // Create settings button element
+        const settingsSvg = await fetch("icons/settings.svg").then(res => res.text());
+        settingsButton = document.createElement("button");
+        settingsButton.id = "settings-button";
+        settingsButton.className = "icon-button";
+        settingsButton.innerHTML = settingsSvg;
+        settingsButton.addEventListener("click", () =>
+        {
+            document.querySelector(".content").classList.toggle("show-settings");
+            settingsButton.classList.toggle("active");
+        });
 
-                const header = document.querySelector(".header");
-                header.append(settingsButton);
-            });
+        // Append to header
+        const header = document.querySelector(".header");
+        header.append(settingsButton);
 
+        // If no prayer times yet, open settings by default
         if (!this.storage.prayerTimes)
         {
             document.querySelector(".content").classList.toggle("show-settings");
@@ -85,7 +84,401 @@ class PopupController
         }
     }
 
-    async setupDropdown({ labelText, optionsMap, parentObject, objectKey, containerId = null })
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Settings Page                                                                                  //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Location Input                                                                                 //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    scheduleNominatimRequest(func)
+    {
+        // Chain requests to ensure they respect the interval
+        this.nominatimRequestQueue = this.nominatimRequestQueue.then(async () =>
+        {
+            // Calculate wait time
+            const now = Date.now();
+            const wait = Math.max(0, this.nominatimRequestIntervalMs - (now - this.lastNominatimRequestTime)); // Enforce 2s interval between requests
+
+            // Wait if needed
+            if (wait > 0)
+            {
+                utils.timeLog(`Scheduling Nominatim request. Will wait ${wait} ms before sending.`);
+                await new Promise(res => setTimeout(res, wait));
+            }
+
+            // Update last request time
+            this.lastNominatimRequestTime = Date.now();
+
+            // Send request
+            utils.timeLog("Sending Nominatim request now.");
+            return func();
+        });
+        return this.nominatimRequestQueue;
+    }
+
+    async fetchLocationResults(query)
+    {
+        return this.scheduleNominatimRequest(async () =>
+        {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`,
+                { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
+            );
+            if (!response.ok) throw new Error(`Nominatim request failed. Status: ${response.status}`);
+            return response.json();
+        });
+    }
+
+    formatLocationName(address)
+    {
+        // Format location name from address components in "City, State, Country" format
+        const cityTownVillage = address.city || address.town || address.village;
+        const stateProvince = address.state || address.province;
+        const country = address.country;
+
+        const parts = [cityTownVillage, stateProvince, country];
+        return parts.filter(Boolean).join(", ");
+    }
+
+    fetchLocationDetails(locationResult)
+    {
+        return this.scheduleNominatimRequest(async () =>
+        {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(locationResult.lat)}&lon=${encodeURIComponent(locationResult.lon)}&addressdetails=1`,
+                { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
+            );
+            if (!response.ok) throw new Error(`Nominatim reverse request failed. Status: ${response.status}`);
+            return await response.json();
+        });
+    }
+
+    updateParameters(locationDetails)
+    {
+        // Extract zip code without extra details (e.g., "12345-6789" -> "12345")
+        const zipCode = locationDetails.address.postcode?.split(" ")[0] ?? "";
+
+        // Merge existing parameters with the new location data and coordinates
+        // Any overlapping keys (e.g., city, state, country) from the new location
+        // will overwrite the old values, while preserving all other existing parameters
+        return { ...this.storage.parameters, countryCode: locationDetails.address.country_code, zipCode: zipCode, latitude: locationDetails.lat, longitude: locationDetails.lon, country: locationDetails.address.country, state: locationDetails.address.state || locationDetails.address.province || "", city: locationDetails.address.city || locationDetails.address.town || locationDetails.address.village || "" };
+    }
+
+    async onStorageChange(previousStorage)
+    {
+        // Determine what has changed
+        const changed = {};
+        for (const key of Object.keys(this.storage))
+        {
+            const previousValue = previousStorage[key];
+            const currentValue = this.storage[key];
+
+            // Deep compare for objects/arrays
+            if (typeof currentValue === "object" && currentValue !== null)
+            {
+                if (JSON.stringify(previousValue) !== JSON.stringify(currentValue))
+                {
+                    changed[key] = true;
+                }
+            }
+            else
+            {
+                if (previousValue !== currentValue)
+                {
+                    changed[key] = true;
+                }
+            }
+        }
+
+        // Handle changes
+        for (const key of Object.keys(changed))
+        {
+            switch (key)
+            {
+                case "isPrayed":
+                    break;
+                case "isNotificationsOn":
+                    // TODO
+                    break;
+                case "notificationsMinutesBefore":
+                    break;
+                case "parameters":
+                    // Update storage
+                    chrome.storage.local.set({ parameters: this.storage.parameters });
+                    utils.timeLog(`Parameters changed from `, previousStorage.parameters, "to", this.storage.parameters);
+
+                    // Wait for background script to process new parameters and update prayer times
+                    const data = await this.awaitBackgroundMessage("prayerTimesProcessed");
+                    this.storage.prayerTimes = data.prayerTimes;
+
+                    // Update displayed prayer times
+                    await this.updateAndDisplayPrayerTimes();
+                    break;
+                case "prayerTimes":
+                    break;
+                default:
+                    console.log(`Unhandled change in key: ${key}`);
+                    break;
+            }
+        }
+        return changed;
+    }
+
+    getPrayerTimesByDate(date)
+    {
+        const targetDate = new Date(date);
+        const dateStr = targetDate.toISOString().split("T")[0];
+        return this.storage.prayerTimes.find(entry => entry.date === dateStr);
+    }
+
+    getDailyPrayerTimes()
+    {
+        return this.getPrayerTimesByDate(new Date());
+    }
+
+    async updateCurrentPrayerBackgroundColor()
+    {
+        const currentPrayerContainer = document.getElementById("current-prayer");
+        if (currentPrayerContainer)
+        {
+            let backgroundColor = utils.COLORS.LIGHT_BLUE;
+            const sunPrayerContainer = document.querySelectorAll(".prayer")[1];
+            if (this.storage.isPrayed)
+            {
+                backgroundColor = utils.COLORS.LIGHT_GREEN;
+            }
+            else if (currentPrayerContainer !== sunPrayerContainer)
+            {
+                const badgeText = await chrome.action.getBadgeText({});
+                if (badgeText.includes("m"))
+                {
+                    backgroundColor = utils.COLORS.LIGHT_RED;
+                }
+            }
+            currentPrayerContainer.style.backgroundColor = backgroundColor;
+        }
+    }
+
+    async displayPrayerTimes(dailyPrayerTimes)
+    {
+        // Clear existing prayers if no data
+        if (!dailyPrayerTimes || !Array.isArray(dailyPrayerTimes.times))
+        {
+            utils.timeLog("No daily prayer times available to display.");
+            this.gridContainer.querySelectorAll(".prayer").forEach(element => element.remove());
+            return;
+        }
+
+        // Clear old current-prayer ids
+        document.querySelectorAll("#current-prayer").forEach(element =>
+        {
+            element.removeAttribute("id");
+            element.style.backgroundColor = "";
+        });
+
+        // Loop through prayers
+        const currentPrayerIndex = utils.getCurrentPrayerIndex(dailyPrayerTimes);
+        for (const [index, name] of utils.PRAYER_NAMES.entries())
+        {
+            let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[index];
+            if (!prayerContainer)
+            {
+                // Create prayer elements
+                prayerContainer = document.createElement("button");
+                prayerContainer.className = "prayer";
+
+                const nameSpan = document.createElement("span");
+                nameSpan.className = "prayer-name";
+                nameSpan.textContent = name;
+
+                const timeSpan = document.createElement("span");
+                timeSpan.className = "prayer-time";
+
+                // Assemble and append
+                prayerContainer.appendChild(nameSpan);
+                prayerContainer.appendChild(timeSpan);
+                this.mainPageGridContainer.appendChild(prayerContainer);
+            }
+
+            // Update prayer time
+            const timeSpan = prayerContainer.querySelector(".prayer-time");
+            timeSpan.textContent = dailyPrayerTimes.times[index];
+
+            // Highlight current prayer
+            if (index === currentPrayerIndex)
+            {
+                // Clone to remove previous event listeners
+                const newButton = prayerContainer.cloneNode(true);
+                prayerContainer.replaceWith(newButton);
+                prayerContainer = newButton;
+                prayerContainer.id = "current-prayer";
+
+                // Toggle isPrayed on click
+                prayerContainer.addEventListener("click", async () =>
+                {
+                    // Clone previous storage for comparison
+                    const previousStorage = structuredClone(this.storage);
+
+                    // Toggle isPrayed state
+                    this.storage.isPrayed = !this.storage.isPrayed;
+
+                    // Update storage
+                    await this.onStorageChange(previousStorage);
+
+                    // Update background color
+                    this.updateCurrentPrayerBackgroundColor();
+                });
+
+                // Update background color
+                this.updateCurrentPrayerBackgroundColor();
+            }
+        }
+    }
+
+    async updateAndDisplayPrayerTimes()
+    {
+        const dailyPrayerTimes = this.getDailyPrayerTimes();
+        await this.displayPrayerTimes(dailyPrayerTimes);
+    }
+
+    renderLocationResults(locationResults)
+    {
+        // Clear previous results
+        const locationName = document.querySelector(".location-name");
+        const locationResultsContainer = document.querySelector(".location-container>.options");
+        locationResultsContainer.innerHTML = "";
+
+        // Render new results
+        if (locationResults.length === 0)
+        {
+            const noResults = document.createElement("div");
+            noResults.textContent = "No results found.";
+            locationResultsContainer.appendChild(noResults);
+            return;
+        }
+        else
+        {
+            for (const locationResult of locationResults)
+            {
+                // Create option element
+                const formattedLocationName = this.formatLocationName(locationResult.address);
+                const option = document.createElement("div");
+                option.textContent = formattedLocationName;
+
+                // Handle option selection
+                option.addEventListener("click", async () =>
+                {
+                    this.toggleLoadingSpinner();
+                    const previousStorage = structuredClone(this.storage);
+
+                    // Update storage with selected location
+                    locationResultsContainer.style.display = "none";
+                    locationName.textContent = formattedLocationName;
+                    locationName.contentEditable = false;
+                    try
+                    {
+                        // Save location details
+                        const locationDetails = await this.fetchLocationDetails(locationResult);
+                        this.storage.parameters = this.updateParameters(locationDetails);
+
+                        // Update storage
+                        await this.onStorageChange(previousStorage);
+
+                        // Update displayed prayer times
+                        await this.updateAndDisplayPrayerTimes();
+                    }
+                    catch (error)
+                    {
+                        console.error("Error processing selected location:", error);
+                    }
+
+                    this.toggleLoadingSpinner();
+                });
+                locationResultsContainer.appendChild(option);
+            }
+        }
+        locationResultsContainer.style.display = "block";
+    }
+
+    appendLocationInput()
+    {
+        // Check if already appended
+        let locationContainer = document.querySelector(".location-container");
+        if (locationContainer) return;
+
+        // Create location input elements
+        locationContainer = document.createElement("div");
+        locationContainer.className = "location-container";
+
+        const locationName = document.createElement("span");
+        locationName.className = "location-name";
+
+        // Set location name
+        if (this.storage.parameters.country && this.storage.parameters.city)
+        {
+            if (this.storage.parameters.state)
+            {
+                locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.state}, ${this.storage.parameters.country}`;
+            }
+            else
+            {
+                locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.country}`;
+            }
+        }
+        else
+        {
+            locationName.textContent = "Click to type city name";
+        }
+
+        // Make location name editable on click
+        locationName.addEventListener("click", () =>
+        {
+            locationName.contentEditable = true;
+            locationName.focus();
+            document.execCommand("selectAll", false, null); // Select all text for easy replacement
+        });
+
+        // Handle location name changes on enter key press
+        locationName.addEventListener("keydown", async (event) =>
+        {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+
+            const newLocation = locationName.textContent.trim();
+            if (newLocation.length === 0) return;
+
+            this.toggleLoadingSpinner();
+
+            try
+            {
+                // Fetch location results
+                const locationResults = await this.fetchLocationResults(newLocation);
+                utils.timeLog("Fetched addresses:", locationResults);
+
+                // Render location results in dropdown
+                await this.renderLocationResults(locationResults);
+            }
+            catch (error)
+            {
+                utils.timeLog("Error fetching location results:", error);
+            }
+
+            this.toggleLoadingSpinner();
+        });
+
+        // Create options container for dropdown results
+        const optionsContainer = document.createElement("div");
+        optionsContainer.className = "options";
+
+        // Assemble and prepend to settings grid
+        locationContainer.appendChild(locationName);
+        locationContainer.appendChild(optionsContainer);
+        this.settingsPageGridContainer.prepend(locationContainer);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Dropdowns                                                                                      //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    async appendDropdown({ labelText, optionsMap, parentObject, objectKey, containerId = null })
     {
         const methodContainer = document.createElement("div");
         if (containerId) methodContainer.id = containerId;
@@ -126,27 +519,17 @@ class PopupController
             option.addEventListener("click", async () =>
             {
                 this.toggleLoadingSpinner();
-
-                // Update storage with selected option
-                const previouslySelectedId = parentObject[objectKey];
-                if (previouslySelectedId === id)
-                {
-                    optionsContainer.style.display = "none";
-                    this.toggleLoadingSpinner();
-                    return;
-                }
-
                 const previousStorage = structuredClone(this.storage);
 
+                // Update storage
                 parentObject[objectKey] = id;
                 await chrome.storage.local.set(this.storage);
-
-                console.log("onStorageChanged");
-                await this.onStorageChanged(previousStorage);
-                console.log("joe");
+                await this.onStorageChange(previousStorage);
 
                 // Remove selected class from all options
                 optionsContainer.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+
+                // Highlight selected option
                 option.classList.add("selected");
 
                 // Update displayed method name and close dropdown
@@ -155,7 +538,6 @@ class PopupController
 
                 this.toggleLoadingSpinner();
             });
-
             if (methodName.textContent === name) option.classList.add("selected");
 
             optionsContainer.appendChild(option);
@@ -213,48 +595,7 @@ class PopupController
         flexContainer.appendChild(methodSelect);
     }
 
-    scheduleNominatimRequest(func)
-    {
-        this.requestQueue = this.requestQueue.then(async () =>
-        {
-            const now = Date.now();
-            const wait = Math.max(0, utils.NOMINATIM_REQUEST_INTERVAL_MS - (now - this.lastRequestTime)); // Enforce 2s interval between requests
 
-            if (wait > 0)
-            {
-                utils.timeLog(`Scheduling Nominatim request. Will wait ${wait} ms before sending.`);
-                await new Promise(res => setTimeout(res, wait));
-            }
-            this.lastRequestTime = Date.now();
-
-            utils.timeLog("Sending Nominatim request now.");
-            return func();
-        });
-        return this.requestQueue;
-    }
-
-    async fetchLocationResults(query)
-    {
-        return this.scheduleNominatimRequest(async () =>
-        {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`,
-                { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
-            );
-            if (!response.ok) throw new Error(`Nominatim request failed. Status: ${response.status}`);
-            return response.json();
-        });
-    }
-
-    formatLocation(address) // TODO maybe remove
-    {
-        const cityTownVillage = address.city || address.town || address.village;
-        const stateProvince = address.state || address.province;
-        const country = address.country;
-
-        const parts = [cityTownVillage, stateProvince, country];
-        return parts.filter(Boolean).join(", ");
-    }
 
     toggleLoadingSpinner()
     {
@@ -271,389 +612,13 @@ class PopupController
         }
     }
 
-    fetchAndStoreLocationDetails(locationResult)
-    {
-        return this.scheduleNominatimRequest(async () =>
-        {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(locationResult.lat)}&lon=${encodeURIComponent(locationResult.lon)}&addressdetails=1`,
-                { headers: { "User-Agent": "https://github.com/9iiota/prayer-times-namaz-vakitleri-extension" } }
-            );
-            if (!response.ok) throw new Error(`Nominatim reverse request failed. Status: ${response.status}`);
-            const data = await response.json();
-
-            const zipCode = data.address.postcode?.split(" ")[0] ?? "";
-
-            // Merge existing parameters with the new location data and coordinates
-            // Any overlapping keys (e.g., city, state, country) from the new location
-            // will overwrite the old values, while preserving all other existing parameters
-            this.storage.parameters = { ...this.storage.parameters, countryCode: data.address.country_code, zipCode: zipCode, latitude: locationResult.lat, longitude: locationResult.lon, country: data.address.country, state: data.address.state || data.address.province || "", city: data.address.city || data.address.town || data.address.village || "" };
-            await chrome.storage.local.set({ parameters: this.storage.parameters });
-            utils.timeLog("Updated parameters with location:", this.storage.parameters);
-        });
-    }
-
-    renderLocationResults(locationResults)
-    {
-        const locationName = document.querySelector(".location-name");
-        const locationResultsContainer = document.querySelector(".location-container>.options");
-        locationResultsContainer.innerHTML = "";
-
-        if (locationResults.length === 0)
-        {
-            const noResults = document.createElement("div");
-            noResults.textContent = "No results found.";
-            locationResultsContainer.appendChild(noResults);
-            return;
-        }
-        else
-        {
-            for (const locationResult of locationResults)
-            {
-                const formattedLocationName = this.formatLocation(locationResult.address);
-                const option = document.createElement("div");
-                option.textContent = formattedLocationName;
-                option.addEventListener("click", async () =>
-                {
-                    // Show loading spinner
-                    this.toggleLoadingSpinner();
-
-                    // Update storage with selected location
-                    locationResultsContainer.style.display = "none";
-                    locationName.textContent = formattedLocationName;
-                    locationName.contentEditable = false;
-                    try
-                    {
-                        await this.fetchAndStoreLocationDetails(locationResult);
-                        utils.timeLog("Stored location details for:", locationResult);
-
-                        // Wait for background script to set badge text
-                        // so that we can correctly highlight the current prayer's color
-                        // when we update the prayer times display
-                        let prayerTimes;
-                        const result = await new Promise((resolve) =>
-                        {
-                            const listener = (msg) =>
-                            {
-                                if (msg.action === "prayerTimesProcessed")
-                                {
-                                    prayerTimes = msg.data.prayerTimes;
-
-                                    chrome.runtime.onMessage.removeListener(listener);
-                                    resolve(msg.result);
-                                }
-                            };
-                            chrome.runtime.onMessage.addListener(listener);
-                        });
-
-                        this.updatePrayerTimes(prayerTimes);
-                    }
-                    catch (error)
-                    {
-                        utils.timeLog("Error storing location details:", error);
-                        // TODO maybe show an error message to the user
-                    }
-
-                    // Hide loading spinner
-                    this.toggleLoadingSpinner();
-                });
-                locationResultsContainer.appendChild(option);
-            }
-        }
-        locationResultsContainer.style.display = "block";
-    }
-
-    setupLocationInput()
-    {
-        const locationContainer = document.createElement("div");
-        locationContainer.className = "location-container";
-        this.settingsPageGridContainer.prepend(locationContainer);
-
-        const locationName = document.createElement("span");
-        locationName.className = "location-name";
-
-        // Set location name
-        if (this.storage.parameters.city && this.storage.parameters.country)
-        {
-            if (this.storage.parameters.state)
-            {
-                locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.state}, ${this.storage.parameters.country}`;
-            }
-            else
-            {
-                locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.country}`;
-            }
-        }
-        else
-        {
-            locationName.textContent = "Click to type city name";
-        }
-
-        // Make location name editable on click
-        locationName.addEventListener("click", () =>
-        {
-            locationName.contentEditable = true;
-            locationName.focus();
-            document.execCommand("selectAll", false, null);
-        });
-
-        // Handle location name changes on enter key press
-        locationName.addEventListener("keydown", async (event) =>
-        {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-
-            const newLocation = locationName.textContent.trim();
-            if (newLocation.length === 0) return;
-
-            try
-            {
-                const locationResults = await this.fetchLocationResults(newLocation);
-                utils.timeLog("Fetched addresses:", locationResults);
-                this.renderLocationResults(locationResults);
-            }
-            catch (error)
-            {
-                utils.timeLog("Error fetching location data:", error);
-                // TODO maybe show an error message to the user
-            }
-        });
-        locationContainer.appendChild(locationName);
-
-        const optionsContainer = document.createElement("div");
-        optionsContainer.className = "options";
-        locationContainer.appendChild(optionsContainer);
-    }
-
-    getPrayerTimesByDate(prayerTimes, date)
-    {
-        const targetDate = new Date(date);
-        const dateStr = targetDate.toISOString().split("T")[0];
-        return prayerTimes.find(entry => entry.date === dateStr);
-    }
-
-    async updateCurrentPrayerBackgroundColor()
-    {
-        const currentPrayerContainer = document.getElementById("current-prayer");
-        if (currentPrayerContainer)
-        {
-            let backgroundColor = utils.COLORS.LIGHT_BLUE;
-            const sunPrayerContainer = document.querySelectorAll(".prayer")[1];
-            if (this.storage.isPrayed)
-            {
-                backgroundColor = utils.COLORS.LIGHT_GREEN;
-            }
-            else if (currentPrayerContainer !== sunPrayerContainer)
-            {
-                // doesnt properly set to red on the first time setting location
-                // because the badge text is not updated yet from background.js
-                const badgeText = await chrome.action.getBadgeText({});
-                if (badgeText.includes("m"))
-                {
-                    backgroundColor = utils.COLORS.LIGHT_RED;
-                }
-            }
-            currentPrayerContainer.style.backgroundColor = backgroundColor;
-        }
-    }
-
-    async displayPrayerTimes(dailyPrayerTimes)
-    {
-        console.log(dailyPrayerTimes);
-        if (!dailyPrayerTimes || !Array.isArray(dailyPrayerTimes.times))
-        {
-            utils.timeLog("No daily prayer times available to display.");
-            this.gridContainer.querySelectorAll(".prayer").forEach(element => element.remove());
-            return;
-        }
-
-        const currentPrayerIndex = utils.getCurrentPrayerIndex(dailyPrayerTimes);
-
-        // Clear old current-prayer ids
-        document.querySelectorAll("#current-prayer").forEach(element =>
-        {
-            element.removeAttribute("id");
-            element.style.backgroundColor = "";
-        });
-
-        for (const [index, name] of utils.PRAYER_NAMES.entries())
-        {
-            // Check if prayer container already exist in the DOM
-            // If it does, only update the time and current-prayer id
-            let prayerContainer = this.mainPageGridContainer.querySelectorAll(".prayer")[index];
-            if (!prayerContainer)
-            {
-                // Create prayer elements
-                prayerContainer = document.createElement("button");
-                prayerContainer.className = "prayer";
-                this.mainPageGridContainer.appendChild(prayerContainer);
-
-                const nameSpan = document.createElement("span");
-                nameSpan.className = "prayer-name";
-                nameSpan.textContent = name;
-                prayerContainer.appendChild(nameSpan);
-
-                const timeSpan = document.createElement("span");
-                timeSpan.className = "prayer-time";
-                prayerContainer.appendChild(timeSpan);
-            }
-
-            // Update prayer time
-            const timeSpan = prayerContainer.querySelector(".prayer-time");
-            timeSpan.textContent = dailyPrayerTimes.times[index];
-
-            // Highlight current prayer
-            if (index === currentPrayerIndex)
-            {
-                // Clone to remove previous event listeners
-                const newButton = prayerContainer.cloneNode(true);
-                prayerContainer.replaceWith(newButton);
-                prayerContainer = newButton;
-
-                prayerContainer.id = "current-prayer";
-                this.updateCurrentPrayerBackgroundColor();
-
-                prayerContainer.addEventListener("click", async () =>
-                {
-                    this.storage.isPrayed = !this.storage.isPrayed;
-                    this.updateCurrentPrayerBackgroundColor();
-
-                    await chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
-                    utils.timeLog("Toggled isPrayed to:", this.storage.isPrayed);
-                });
-            }
-        }
-    }
-
-    fuzzySearch(query, options, threshold = 0.3)
-    {
-        if (!query || !options || options.length === 0) return null;
-
-        const fuse = new Fuse(options, {
-            keys: ["name"],
-            threshold: threshold,
-            includeScore: true,
-        });
-
-        const results = fuse.search(query, { limit: 1 });
-        return results.length > 0 ? results[0].item : null;
-    }
-
-    async retrieveCityId(countryId, city, state)
-    {
-        // Fetch the country/state list
-        const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${encodeURIComponent(countryId)}&Culture=en-US`);
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-
-        let citiesList = [];
-
-        if (json.HasStateList)
-        {
-            // Fallback to StateList if StateRegionList is null
-            const states = json.StateList.map(item =>
-            {
-                const values = Object.values(item);
-                return { name: values[2]?.trim(), id: values[3] };
-            }).filter(item => item.name && item.id);
-
-            const bestStateMatchObj = this.fuzzySearch(state || city, states); // { name: "", id: "" }
-            if (!bestStateMatchObj) return null;
-
-            const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatchObj.id)}&Culture=en-US`);
-            if (!stateRes.ok) throw new Error('Network response not ok');
-            const stateJson = await stateRes.json();
-            citiesList = stateJson.StateRegionList || [];
-        }
-        else
-        {
-            citiesList = json.StateRegionList;
-        }
-
-        // Map cities to simplified objects
-        const cities = citiesList.map(item =>
-        {
-            const values = Object.values(item);
-            return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
-        }).filter(item => item.name && item.id);
-
-        // Fuzzy search for best city match
-        const bestCityMatch = this.fuzzySearch(city, cities);
-        return bestCityMatch?.id || null;
-    }
-
-    async onStorageChanged(previousStorage)
-    {
-        const changed = {};
-        for (const key of Object.keys(this.storage))
-        {
-            const previousValue = previousStorage[key];
-            const currentValue = this.storage[key];
-
-            // Deep compare for objects/arrays
-            if (typeof currentValue === "object" && currentValue !== null)
-            {
-                if (JSON.stringify(previousValue) !== JSON.stringify(currentValue))
-                {
-                    changed[key] = true;
-                }
-            }
-            else
-            {
-                if (previousValue !== currentValue)
-                {
-                    changed[key] = true;
-                }
-            }
-        }
-
-        for (const key of Object.keys(changed))
-        {
-            switch (key)
-            {
-                // case "isPrayed":
-                //     console.log("isPrayed changed:", this.storage.isPrayed);
-                //     break;
-
-                case "parameters":
-                    console.log(this.storage);
-                    chrome.storage.local.set({ parameters: this.storage.parameters });
-
-                    console.log("case parameters");
-                    utils.timeLog(`Parameters changed from `, previousStorage.parameters, "to", this.storage.parameters);
-                    const data = await this.waitForBackgroundMessage();
-                    this.storage.prayerTimes = data.prayerTimes;
-
-                    await this.updatePrayerTimes(this.storage.prayerTimes);
-                    // TODO ONPARAMETERSCHANGED
-                    // await this.onParametersChanged();
-                    break;
-
-                // case "prayerTimes":
-                //     console.log("Prayer times changed:", this.storage.prayerTimes.length, "entries");
-                //     break;
-
-                case "isNotificationsOn":
-                    console.log("Notification toggle changed:", this.storage.isNotificationsOn);
-                    break;
-
-                default:
-                    console.log(`Unhandled change in key: ${key}`);
-                    break;
-            }
-        }
-
-        return changed;
-    }
-
-    waitForBackgroundMessage()
+    awaitBackgroundMessage(messageAction)
     {
         return new Promise(resolve =>
         {
             const listener = (message, sender, sendResponse) =>
             {
-                console.log(message);
-                if (message.action === 'prayerTimesProcessed')
+                if (message.action === messageAction)
                 {
                     chrome.runtime.onMessage.removeListener(listener);
                     resolve(message.data);
@@ -662,179 +627,16 @@ class PopupController
             chrome.runtime.onMessage.addListener(listener);
         });
     }
-
-    async onParametersChanged()
-    {
-        let prayerTimes = [];
-        // Try to scrape from https://namazvakitleri.diyanet.gov.tr/ first
-        // because the API times are usually off by a few minutes compared to the official site
-        if (this.storage.parameters.calculationMethodId === "13"
-            && this.storage.parameters.asrMethodId === "0"
-            && this.storage.parameters.country
-            && this.storage.parameters.city
-        )
-            try
-            {
-                utils.timeLog('Fetching prayer times from official site...');
-                const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
-                if (!countryId) throw new Error(`Country not found in countryMap: ${this.storage.parameters.country}`);
-
-                const r = await chrome.runtime.sendMessage({ action: "fetchPrayerTimes", data: { countryId, city: this.storage.parameters.city, state: this.storage.parameters.state } });
-                //////////////////////////////////////////////////////////////////////////
-                return;
-
-                const cityId = await this.retrieveCityId(countryId, this.storage.parameters.city, this.storage.parameters.state);
-                if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country: ${this.storage.parameters.country}`);
-
-                const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
-                if (!response.ok) throw new Error(`Failed to fetch prayer times from official site. Status: ${response.status}`);
-                const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const days = doc.querySelectorAll("#tab-1 > div > table > tbody > tr");
-                days.forEach(day =>
-                {
-                    const children = day.children;
-                    const dateStr = children[0].textContent.trim();
-                    const [d, m, y] = dateStr.split(".");
-                    const date = new Date(y, m - 1, d, 12);
-
-                    const timeTds = Array.from(children).slice(2);
-                    const times = timeTds.map(cell => cell.textContent.trim());
-
-                    prayerTimes.push({
-                        date: date.toISOString().split("T")[0],
-                        times
-                    });
-                });
-
-                const todayStr = new Date().toISOString().split("T")[0];
-                prayerTimes = prayerTimes.filter(entry => entry.date >= todayStr);
-
-                if (prayerTimes.length === 0) throw new Error('No prayer times found from official site.');
-                await chrome.storage.local.set({ prayerTimes });
-                utils.timeLog('Fetched and stored prayer times from official site:', prayerTimes);
-
-                // Wait for background script to set badge text
-                // so that we can correctly highlight the current prayer's color
-                // when we update the prayer times display
-                const result = await new Promise((resolve) =>
-                {
-                    const listener = (msg) =>
-                    {
-                        if (msg.action === "prayerTimesProcessed")
-                        {
-                            chrome.runtime.onMessage.removeListener(listener);
-                            resolve(msg.result);
-                        }
-                    };
-                    chrome.runtime.onMessage.addListener(listener);
-                });
-
-                this.updatePrayerTimes(prayerTimes);
-                return;
-            }
-            catch (error)
-            {
-                console.error('Error fetching prayer times from official site:', error);
-            }
-
-        // If scraping from official site failed, fall back to using the API
-        try
-        {
-            const response = await fetch(
-                `https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(this.storage.parameters.countryCode)}&zipcode=${encodeURIComponent(this.storage.parameters.zipCode)}&latitude=${encodeURIComponent(this.storage.parameters.latitude)}&longitude=${encodeURIComponent(this.storage.parameters.longitude)}&method=${encodeURIComponent(this.storage.parameters.calculationMethodId)}&juristic=${encodeURIComponent(this.storage.parameters.asrMethodId)}&time_format=0`
-            );
-            if (!response.ok) throw new Error(`Failed to fetch prayer times from API. Status: ${response.status}`);
-            const json = await response.json();
-
-            const todayStr = new Date().toISOString().split("T")[0];
-            prayerTimes = Object.entries(json.results).map(([date, times]) => ({
-                date: date.replace(/-(\d)$/, "-0$1"), // Pad single digit days with leading zero
-                times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
-            })).filter(entry => entry.date >= todayStr);
-            if (prayerTimes.length === 0) throw new Error('No prayer times found from API.');
-
-            await chrome.storage.local.set({ prayerTimes });
-            utils.timeLog('Fetched and stored prayer times from API:', prayerTimes);
-            this.updatePrayerTimes(prayerTimes);
-            return;
-        }
-        catch (error)
-        {
-            console.error('Error fetching prayer times from API:', error);
-            return;
-        }
-    }
-
-    getPrayerTimesByDate(prayerTimes, date)
-    {
-        const targetDate = new Date(date);
-        const dateStr = targetDate.toISOString().split("T")[0];
-        return prayerTimes.find(entry => entry.date === dateStr);
-    }
-
-    updatePrayerTimes(prayerTimes)
-    {
-        console.log("fsddfs");
-        const dailyPrayerTimes = this.getPrayerTimesByDate(prayerTimes, new Date());
-        this.displayPrayerTimes(dailyPrayerTimes);
-    }
-
-    onKeydown(event)
-    {
-        const key = event.key;
-        if (key === this.debugModeSequence[this.sequenceIndex])
-        {
-            this.sequenceIndex++;
-
-            if (this.sequenceIndex === this.debugModeSequence.length)
-            {
-                this.sequenceIndex = 0;
-                console.log("Debug mode activated!");
-                const prayers = document.querySelectorAll(".prayer");
-                prayers.forEach(prayer =>
-                {
-                    prayer.style.display = prayer.style.display === "block" ? "flex" : "block";
-                });
-
-                // TODO: Activate debug mode
-
-                // let duoContainer = document.querySelector(".duo-container");
-                // if (!duoContainer)
-                // {
-                //     duoContainer = document.createElement("div");
-                //     duoContainer.className = "duo-container";
-
-                //     const rightContainer = document.createElement("div");
-                //     duoContainer.appendChild(rightContainer);
-
-                //     const popupContainer = document.querySelector(".popup-container");
-                //     popupContainer.appendChild(duoContainer);
-
-                //     const gridContainer = document.querySelector(".grid-container");
-                //     duoContainer.appendChild(gridContainer);
-                // }
-            }
-        }
-        else
-        {
-            // Reset if the sequence is broken
-            // Also handle the case where the first key of the sequence is pressed again
-            this.sequenceIndex = key === this.debugModeSequence[0] ? 1 : 0;
-        }
-    }
 }
 
 document.addEventListener("DOMContentLoaded", async () =>
 {
     const popupController = await PopupController.init();
 
-    popupController.createLogoIcon();
-    popupController.createSettingsButton();
+    popupController.appendLogoIcon();
+    popupController.appendSettingsButton();
 
-    popupController.setupLocationInput();
+    popupController.appendLocationInput();
 
     const dropdowns = [
         { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "calculationMethodId" },
@@ -843,14 +645,14 @@ document.addEventListener("DOMContentLoaded", async () =>
     ];
     for (const config of dropdowns)
     {
-        await popupController.setupDropdown(config);
+        await popupController.appendDropdown(config);
     }
 
     popupController.createNotificationToggle("notifications-container");
 
     if (popupController.storage && popupController.storage.prayerTimes)
     {
-        const dailyPrayerTimes = popupController.getPrayerTimesByDate(popupController.storage.prayerTimes, new Date());
+        const dailyPrayerTimes = popupController.getPrayerTimesByDate(new Date());
         popupController.displayPrayerTimes(dailyPrayerTimes);
     }
 
@@ -875,10 +677,5 @@ document.addEventListener("DOMContentLoaded", async () =>
             locationContainer.style.display = "none";
             locationSpan.contentEditable = false;
         }
-    });
-
-    document.addEventListener("keydown", (event) =>
-    {
-        popupController.onKeydown(event);
     });
 });

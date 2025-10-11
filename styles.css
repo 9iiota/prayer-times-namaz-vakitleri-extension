@@ -91,7 +91,7 @@ svg>path
     padding-bottom: var(--primary-padding);
 }
 
-.logo-icon
+#logo-icon
 {
     width: 32px;
     height: 32px;

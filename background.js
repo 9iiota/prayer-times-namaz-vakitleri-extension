@@ -1,6 +1,6 @@
-import * as utils from "./utils.js";
 import { countryMap } from "./country-map.js";
 import Fuse from "./libs/fuse.min.mjs";
+import * as utils from "./utils.js";
 
 class BackgroundController
 {
@@ -30,14 +30,12 @@ class BackgroundController
                         break;
                     case "isNotificationsOn":
                         this.onIsNotificationsOnChanged(changes.isNotificationsOn);
-                        // TODO
                         break;
                     case "notificationsMinutesBefore":
-                        // TODO
                         break;
                     case "parameters":
                         await this.onParametersChanged(changes.parameters);
-                        console.log("fdsfds");
+
                         // Notify popup.js (if open)
                         const action = "prayerTimesProcessed";
                         chrome.runtime.sendMessage({ action: action, data: { prayerTimes: this.storage.prayerTimes } })
@@ -47,15 +45,7 @@ class BackgroundController
                             });
                         break;
                     case "prayerTimes":
-                        await this.onPrayerTimesChanged(changes.prayerTimes);
-
-                        // // Notify popup.js (if open)
-                        // const action = "prayerTimesProcessed";
-                        // chrome.runtime.sendMessage({ action: action, data: { prayerTimes: this.storage.prayerTimes } })
-                        //     .catch((error) =>
-                        //     {
-                        //         utils.timeLog(`Popup page not open, cannot send ${action} message.`, error);
-                        //     });
+                        // await this.onPrayerTimesChanged(changes.prayerTimes);
                         break;
                     default:
                         break;
