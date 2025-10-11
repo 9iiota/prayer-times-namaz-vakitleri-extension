@@ -19,6 +19,7 @@
     },
     "permissions": [
         "alarms",
+        "cookies",
         "idle",
         "storage",
         "notifications"
@@ -29,7 +30,8 @@
     },
     "host_permissions": [
 		"*://*.namazvakitleri.diyanet.gov.tr/*",
-        "*://www.islamicfinder.us/index.php/api/*"
+        "*://*.islamvakti.com/*",
+        "*://*.islamicfinder.us/*"
 	],
     "web_accessible_resources": [
         {

@@ -1,4 +1,6 @@
 import * as utils from "./utils.js";
+import { countryMap } from "./country-map.js";
+import Fuse from "./libs/fuse.min.mjs";
 
 class BackgroundController
 {
@@ -34,26 +36,243 @@ class BackgroundController
                         // TODO
                         break;
                     case "parameters":
-                        // this.onParametersChanged(changes.parameters);
+                        await this.onParametersChanged(changes.parameters);
+                        console.log("fdsfds");
+                        // Notify popup.js (if open)
+                        const action = "prayerTimesProcessed";
+                        chrome.runtime.sendMessage({ action: action, data: { prayerTimes: this.storage.prayerTimes } })
+                            .catch((error) =>
+                            {
+                                utils.timeLog(`Popup page not open, cannot send ${action} message.`, error);
+                            });
                         break;
                     case "prayerTimes":
                         await this.onPrayerTimesChanged(changes.prayerTimes);
 
-                        // notify popup (if open)
-                        chrome.runtime.sendMessage({
-                            action: "prayerTimesProcessed",
-                            result: { status: "done" }
-                        });
-
+                        // // Notify popup.js (if open)
+                        // const action = "prayerTimesProcessed";
+                        // chrome.runtime.sendMessage({ action: action, data: { prayerTimes: this.storage.prayerTimes } })
+                        //     .catch((error) =>
+                        //     {
+                        //         utils.timeLog(`Popup page not open, cannot send ${action} message.`, error);
+                        //     });
                         break;
                     default:
                         break;
                 }
             }
         });
+
+        // chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) =>
+        // {
+        //     if (message.action === "fetchPrayerTimes")
+        //     {
+        //         const { countryId, city, state } = message.data;
+
+        //         const cities = await this.fetchCitiesIslamVakti(countryId)
+        //         const cityId = this.fuzzySearch(city, cities)?.id;
+        //         if (!cityId) throw new Error(`City not found: ${city} in country ID: ${countryId}`);
+
+        //         const prayerTimes = await this.fetchPrayerTimesIslamVakti(countryId, cityId);
+        //         console.log(prayerTimes);
+        //         // this.storage.prayerTimes = prayerTimes;
+        //     }
+        // });
     }
 
     static instance = null;
+
+    async fetchCitiesIslamVakti(countryId)
+    {
+        const res = await fetch("https://islamvakti.com/ajax/country", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+            body: `country_id=${encodeURIComponent(countryId)}`
+        });
+        if (!res.ok) throw new Error('Network response not ok');
+        const text = await res.text();
+
+        // Capture <option value='id'>City Name</option>
+        const cityRegex = /<option value='(\d+)'>([^<]+)<\/option>/g;
+        let cities = [];
+        let cityMatch;
+        while ((cityMatch = cityRegex.exec(text)) !== null)
+        {
+            cities.push({ id: cityMatch[1], name: cityMatch[2].trim() });
+        }
+        return cities;
+    }
+
+    fuzzySearch(query, list, keys = ["name"], threshold = 0.3)
+    {
+        if (!query || !list || list.length === 0) return null;
+
+        const fuse = new Fuse(list, {
+            keys: keys,
+            threshold: threshold,
+            includeScore: true,
+        });
+
+        const results = fuse.search(query, { limit: 1 });
+        return results.length > 0 ? results[0].item : null;
+    }
+
+    async fetchPrayerTimesIslamVakti()
+    {
+        const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
+        if (!countryId) throw new Error(`Country not found: ${this.storage.parameters.country}`);
+
+        const cities = await this.fetchCitiesIslamVakti(countryId)
+        const cityId = this.fuzzySearch(this.storage.parameters.city, cities)?.id;
+        if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country ID: ${countryId}`);
+
+        const response = await fetch("https://islamvakti.com/home/vakitler", {
+            headers: { "Referer": `https://islamvakti.com/home/index/${encodeURIComponent(countryId)}/${encodeURIComponent(cityId)}/yok` }
+        });
+        if (!response.ok) throw new Error(`Failed to fetch prayer times from IslamVakti. Status: ${response.status}`);
+        const text = await response.text();
+
+        // Capture everything from the first <tr> with a background-color style to the end of the string
+        // The first <tr> with a background-color style indicates today's prayer times
+        const futurePrayersTextRegex = /<tr[^>]*style=["'][^"']*background-color[^"']*["'][^>]*>[\s\S]*/i;
+        const futurePrayersMatch = text.match(futurePrayersTextRegex);
+        if (!futurePrayersMatch) throw new Error('Unexpected response format from prayer times site');
+
+        // Capture <tr>...</tr>
+        const prayerRowsRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+        const prayerRowsMatch = futurePrayersMatch[0].match(prayerRowsRegex);
+        if (!prayerRowsMatch) throw new Error('No prayer rows found in response');
+
+        let previousDate = null;
+        const prayerTimes = prayerRowsMatch.map(row =>
+        {
+            // Capture each <td>...</td>
+            const columnsRegex = /<td[^>]*>(?:<b>)*([\s\S]*?)(?:<\/b>)*<\/td>/g;
+            const columnsMatch = row.match(columnsRegex);
+            if (!columnsMatch) return null;
+
+            // Capture date in format DD.MM.YYYY
+            const dateRegex = /(\d{2})\.(\d{2})\.(\d{4})/;
+            const dateMatch = dateRegex.exec(columnsMatch[0]);
+            if (!dateMatch) return null;
+            const [_, day, month, year] = dateMatch;
+            const date = `${year}-${month}-${day}`;
+            if (previousDate && date <= previousDate) return null; // Ensure dates are in ascending order
+            previousDate = date;
+
+            // Capture times in format HH:MM
+            const timeRegex = /<td[^>]*>(?:<b>)*(\d{2}:\d{2})(?:<\/b>)*<\/td>/g;
+            const timeMatches = [...row.matchAll(timeRegex)];
+            if (timeMatches.length < 6) return null; // Ensure there are at least 6 time entries
+
+            // Extract times and trim whitespace
+            const times = timeMatches.map(match => match[1].trim());
+            return { date, times };
+        }).filter(entry => entry !== null && entry.date >= new Date().toISOString().split('T')[0]); // Filter out nulls and past dates
+
+        return prayerTimes;
+    }
+
+    async fetchPrayerTimesIslamicFinder()
+    {
+        const response = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(this.storage.parameters.countryCode)}&zipcode=${encodeURIComponent(this.storage.parameters.zipCode)}&latitude=${encodeURIComponent(this.storage.parameters.latitude)}&longitude=${encodeURIComponent(this.storage.parameters.longitude)}&method=${encodeURIComponent(this.storage.parameters.calculationMethodId)}&juristic=${encodeURIComponent(this.storage.parameters.asrMethodId)}&time_format=0`);
+        if (!response.ok) throw new Error(`Failed to fetch prayer times from IslamicFinder API. Status: ${response.status}`);
+        const json = await response.json();
+
+        const todayStr = new Date().toISOString().split("T")[0];
+        const prayerTimes = Object.entries(json.results).map(([date, times]) => ({
+            date: date.replace(/-(\d)$/, "-0$1"), // Pad single digit days with leading zero
+            times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
+        })).filter(entry => entry.date >= todayStr);
+        if (prayerTimes.length === 0) throw new Error("No prayer times found from IslamicFinder API");
+
+        return prayerTimes;
+    }
+
+    async fetchPrayerTimes()
+    {
+        let prayerTimes = [];
+
+        // Try fetching from IslamVakti first
+        if (this.storage.parameters.calculationMethodId === "13" && this.storage.parameters.asrMethodId === "0" && this.storage.parameters.country && this.storage.parameters.city)
+        {
+            try
+            {
+                utils.timeLog("Fetching prayer times from IslamVakti...");
+                prayerTimes = await this.fetchPrayerTimesIslamVakti();
+                if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamVakti");
+
+                utils.timeLog(`Fetched ${prayerTimes.length} prayer times from IslamVakti`);
+            }
+            catch (error)
+            {
+                console.error("Error fetching prayer times from IslamVakti:", error);
+            }
+        }
+
+        if (!prayerTimes || prayerTimes.length === 0)
+        {
+            // Fallback to API if IslamVakti fails
+            try
+            {
+                utils.timeLog("Falling back to IslamicFinder API...");
+                prayerTimes = await this.fetchPrayerTimesIslamicFinder();
+                if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamicFinder API");
+
+                utils.timeLog(`Fetched ${prayerTimes.length} prayer times from IslamicFinder API`);
+            }
+            catch (error)
+            {
+                console.error("Error fetching prayer times from IslamicFinder API:", error);
+            }
+        }
+
+        return prayerTimes;
+    }
+
+    async retrieveCityId(countryId, city, state)
+    {
+        // Fetch the country/state list
+        const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${encodeURIComponent(countryId)}&Culture=en-US`);
+        if (!res.ok) throw new Error('Network response not ok');
+        console.log(res);
+        const json = await res.json();
+
+        let citiesList = [];
+
+        if (json.HasStateList)
+        {
+            // Fallback to StateList if StateRegionList is null
+            const states = json.StateList.map(item =>
+            {
+                const values = Object.values(item);
+                return { name: values[2]?.trim(), id: values[3] };
+            }).filter(item => item.name && item.id);
+
+            const bestStateMatchObj = this.fuzzySearch(state || city, states); // { name: "", id: "" }
+            if (!bestStateMatchObj) return null;
+
+            const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatchObj.id)}&Culture=en-US`);
+            if (!stateRes.ok) throw new Error('Network response not ok');
+            const stateJson = await stateRes.json();
+            citiesList = stateJson.StateRegionList || [];
+        }
+        else
+        {
+            citiesList = json.StateRegionList;
+        }
+
+        // Map cities to simplified objects
+        const cities = citiesList.map(item =>
+        {
+            const values = Object.values(item);
+            return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
+        }).filter(item => item.name && item.id);
+
+        // Fuzzy search for best city match
+        const bestCityMatch = this.fuzzySearch(city, cities);
+        return bestCityMatch?.id || null;
+    }
 
     static async init()
     {
@@ -282,15 +501,27 @@ class BackgroundController
 
     async onParametersChanged(change)
     {
-        // console.log(change.newValue);
-        // this.storage.parameters = change.newValue;
-        // utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
+        this.storage.parameters = change.newValue;
+        utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
+
+        // TODO clean up
+        const prayerTimes = await this.fetchPrayerTimes();
+        if (prayerTimes)
+        {
+            await chrome.storage.local.set({ prayerTimes: prayerTimes });
+            this.storage.prayerTimes = prayerTimes;
+            this.todayPrayerTimes = null;
+            this.nextPrayerIndex = null;
+            await this.startBadgeTask();
+        }
     }
 
     async onPrayerTimesChanged(change)
     {
         this.storage.prayerTimes = change.newValue;
         utils.timeLog(`prayerTimes changed from ${change.oldValue?.length || 0} entries to ${change.newValue?.length || 0} entries`);
+        this.todayPrayerTimes = null;
+        this.nextPrayerIndex = null;
         this.startBadgeTask();
     }
 

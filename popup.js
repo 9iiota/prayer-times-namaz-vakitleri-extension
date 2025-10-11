@@ -141,7 +141,9 @@ class PopupController
                 parentObject[objectKey] = id;
                 await chrome.storage.local.set(this.storage);
 
+                console.log("onStorageChanged");
                 await this.onStorageChanged(previousStorage);
+                console.log("joe");
 
                 // Remove selected class from all options
                 optionsContainer.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
@@ -325,8 +327,26 @@ class PopupController
                         await this.fetchAndStoreLocationDetails(locationResult);
                         utils.timeLog("Stored location details for:", locationResult);
 
-                        // Fetch new prayer times with updated parameters
-                        await this.onParametersChanged();
+                        // Wait for background script to set badge text
+                        // so that we can correctly highlight the current prayer's color
+                        // when we update the prayer times display
+                        let prayerTimes;
+                        const result = await new Promise((resolve) =>
+                        {
+                            const listener = (msg) =>
+                            {
+                                if (msg.action === "prayerTimesProcessed")
+                                {
+                                    prayerTimes = msg.data.prayerTimes;
+
+                                    chrome.runtime.onMessage.removeListener(listener);
+                                    resolve(msg.result);
+                                }
+                            };
+                            chrome.runtime.onMessage.addListener(listener);
+                        });
+
+                        this.updatePrayerTimes(prayerTimes);
                     }
                     catch (error)
                     {
@@ -439,6 +459,14 @@ class PopupController
 
     async displayPrayerTimes(dailyPrayerTimes)
     {
+        console.log(dailyPrayerTimes);
+        if (!dailyPrayerTimes || !Array.isArray(dailyPrayerTimes.times))
+        {
+            utils.timeLog("No daily prayer times available to display.");
+            this.gridContainer.querySelectorAll(".prayer").forEach(element => element.remove());
+            return;
+        }
+
         const currentPrayerIndex = utils.getCurrentPrayerIndex(dailyPrayerTimes);
 
         // Clear old current-prayer ids
@@ -588,8 +616,17 @@ class PopupController
                 //     break;
 
                 case "parameters":
+                    console.log(this.storage);
+                    chrome.storage.local.set({ parameters: this.storage.parameters });
+
+                    console.log("case parameters");
                     utils.timeLog(`Parameters changed from `, previousStorage.parameters, "to", this.storage.parameters);
-                    await this.onParametersChanged();
+                    const data = await this.waitForBackgroundMessage();
+                    this.storage.prayerTimes = data.prayerTimes;
+
+                    await this.updatePrayerTimes(this.storage.prayerTimes);
+                    // TODO ONPARAMETERSCHANGED
+                    // await this.onParametersChanged();
                     break;
 
                 // case "prayerTimes":
@@ -609,6 +646,23 @@ class PopupController
         return changed;
     }
 
+    waitForBackgroundMessage()
+    {
+        return new Promise(resolve =>
+        {
+            const listener = (message, sender, sendResponse) =>
+            {
+                console.log(message);
+                if (message.action === 'prayerTimesProcessed')
+                {
+                    chrome.runtime.onMessage.removeListener(listener);
+                    resolve(message.data);
+                }
+            };
+            chrome.runtime.onMessage.addListener(listener);
+        });
+    }
+
     async onParametersChanged()
     {
         let prayerTimes = [];
@@ -624,6 +678,10 @@ class PopupController
                 utils.timeLog('Fetching prayer times from official site...');
                 const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
                 if (!countryId) throw new Error(`Country not found in countryMap: ${this.storage.parameters.country}`);
+
+                const r = await chrome.runtime.sendMessage({ action: "fetchPrayerTimes", data: { countryId, city: this.storage.parameters.city, state: this.storage.parameters.state } });
+                //////////////////////////////////////////////////////////////////////////
+                return;
 
                 const cityId = await this.retrieveCityId(countryId, this.storage.parameters.city, this.storage.parameters.state);
                 if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country: ${this.storage.parameters.country}`);
@@ -696,7 +754,6 @@ class PopupController
                 date: date.replace(/-(\d)$/, "-0$1"), // Pad single digit days with leading zero
                 times: [times.Fajr, times.Duha, times.Dhuhr, times.Asr, times.Maghrib, times.Isha]
             })).filter(entry => entry.date >= todayStr);
-
             if (prayerTimes.length === 0) throw new Error('No prayer times found from API.');
 
             await chrome.storage.local.set({ prayerTimes });
@@ -720,6 +777,7 @@ class PopupController
 
     updatePrayerTimes(prayerTimes)
     {
+        console.log("fsddfs");
         const dailyPrayerTimes = this.getPrayerTimesByDate(prayerTimes, new Date());
         this.displayPrayerTimes(dailyPrayerTimes);
     }
