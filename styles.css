@@ -227,7 +227,6 @@ svg>path
     display: none;
     position: absolute;
     text-align: center;
-    top: 90%;
     width: 100%;
     z-index: 1000;
 }
@@ -260,21 +259,24 @@ svg>path
     position: relative;
 }
 
-.method-container>.options
+.method-select-wrapper
+{
+    flex-grow: 1;
+    justify-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.method-select-wrapper>.options
 {
     font-size: var(--secondary-font-size);
 }
 
-.method-container>.options>div.selected
+.method-select-wrapper>.options>div.selected
 {
     background-color: #baebff;
     color: var(--primary-text-color);
     font-weight: var(--bold-font-weight);
-}
-
-.method-label
-{
-    /* font-size: small; */
 }
 
 .method-select

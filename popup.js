@@ -367,7 +367,7 @@ class PopupController
                 // Handle option selection
                 option.addEventListener("click", async () =>
                 {
-                    this.toggleLoadingSpinner();
+                    this.toggleLoader();
                     const previousStorage = structuredClone(this.storage);
 
                     // Update storage with selected location
@@ -391,7 +391,7 @@ class PopupController
                         console.error("Error processing selected location:", error);
                     }
 
-                    this.toggleLoadingSpinner();
+                    this.toggleLoader();
                 });
                 locationResultsContainer.appendChild(option);
             }
@@ -446,7 +446,7 @@ class PopupController
             const newLocation = locationName.textContent.trim();
             if (newLocation.length === 0) return;
 
-            this.toggleLoadingSpinner();
+            this.toggleLoader();
 
             try
             {
@@ -462,7 +462,7 @@ class PopupController
                 utils.timeLog("Error fetching location results:", error);
             }
 
-            this.toggleLoadingSpinner();
+            this.toggleLoader();
         });
 
         // Create options container for dropdown results
@@ -478,7 +478,7 @@ class PopupController
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dropdowns                                                                                      //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    async appendDropdown({ labelText, optionsMap, parentObject, objectKey, containerId = null })
+    async appendDropdown({ labelText, optionsDictionary, controllerParentObject, controllerParentObjectKey, containerId = null })
     {
         const methodContainer = document.createElement("div");
         if (containerId) methodContainer.id = containerId;
@@ -490,9 +490,13 @@ class PopupController
         methodLabel.textContent = labelText;
         methodContainer.appendChild(methodLabel);
 
+        const methodSelectWrapper = document.createElement("div");
+        methodSelectWrapper.className = "method-select-wrapper";
+        methodContainer.appendChild(methodSelectWrapper);
+
         const methodSelect = document.createElement("button");
         methodSelect.className = "method-select";
-        methodContainer.appendChild(methodSelect);
+        methodSelectWrapper.appendChild(methodSelect);
 
         const methodName = document.createElement("span");
         methodName.className = "method-name";
@@ -500,10 +504,10 @@ class PopupController
 
         const optionsContainer = document.createElement("div");
         optionsContainer.className = "options";
-        methodContainer.appendChild(optionsContainer);
+        methodSelectWrapper.appendChild(optionsContainer);
 
         // Set chosen option
-        methodName.textContent = optionsMap[parentObject[objectKey]];
+        methodName.textContent = optionsDictionary[controllerParentObject[controllerParentObjectKey]];
 
         // Toggle dropdown
         methodSelect.addEventListener("click", () =>
@@ -512,17 +516,17 @@ class PopupController
         });
 
         // Populate options
-        for (const [id, name] of Object.entries(optionsMap))
+        for (const [id, name] of Object.entries(optionsDictionary))
         {
             const option = document.createElement("div");
             option.textContent = name;
             option.addEventListener("click", async () =>
             {
-                this.toggleLoadingSpinner();
+                this.toggleLoader();
                 const previousStorage = structuredClone(this.storage);
 
                 // Update storage
-                parentObject[objectKey] = id;
+                controllerParentObject[controllerParentObjectKey] = id;
                 await chrome.storage.local.set(this.storage);
                 await this.onStorageChange(previousStorage);
 
@@ -536,7 +540,7 @@ class PopupController
                 methodName.textContent = name;
                 optionsContainer.style.display = "none";
 
-                this.toggleLoadingSpinner();
+                this.toggleLoader();
             });
             if (methodName.textContent === name) option.classList.add("selected");
 
@@ -549,68 +553,50 @@ class PopupController
         const notificationsContainer = document.getElementById(containerId);
         if (!notificationsContainer) return;
 
+        // Prevent double initialization
+        if (notificationsContainer.querySelector("#notifications-button")) return;
+
+        // Create flex container to hold the icon + dropdown wrapper
         const flexContainer = document.createElement("div");
         flexContainer.className = "flex-container";
 
         const methodLabel = notificationsContainer.querySelector(".method-label");
         notificationsContainer.insertBefore(flexContainer, methodLabel.nextSibling);
 
-        let notificationsButton = notificationsContainer.querySelector("#notifications-button");
-        if (notificationsButton) return; // Already created
-
+        // --- Create the bell icon button ---
         const svgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
         const bellSvg = await fetch(svgPath).then(res => res.text());
 
-        notificationsButton = document.createElement("button");
+        const notificationsButton = document.createElement("button");
         notificationsButton.id = "notifications-button";
         notificationsButton.className = "icon-button";
         notificationsButton.innerHTML = bellSvg;
         flexContainer.appendChild(notificationsButton);
 
         if (this.storage.isNotificationsOn)
-        {
             notificationsButton.classList.add("active");
-        }
 
         notificationsButton.addEventListener("click", async () =>
         {
-            const svgElement = notificationsButton.querySelector("svg");
-            console.log(svgElement);
-            if (!svgElement) return;
-
-            // Toggle state + fetch new SVG
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
             const newSvgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
             const newSvg = await fetch(newSvgPath).then(res => res.text());
             notificationsButton.innerHTML = newSvg;
             notificationsButton.classList.toggle("active");
 
-            // Update storage
             await chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
             utils.timeLog("Toggled notifications to:", this.storage.isNotificationsOn);
         });
 
-        const methodSelect = notificationsContainer.querySelector(".method-select");
-        notificationsContainer.removeChild(methodSelect);
-        flexContainer.appendChild(methodSelect);
-    }
-
-
-
-    toggleLoadingSpinner()
-    {
-        let loader = document.querySelector(".loader");
-        if (loader)
+        // --- Move .method-select-wrapper next to the icon ---
+        const methodSelectWrapper = notificationsContainer.querySelector(".method-select-wrapper");
+        if (methodSelectWrapper)
         {
-            loader.remove();
-        }
-        else
-        {
-            loader = document.createElement("div");
-            loader.className = "loader";
-            document.body.prepend(loader);
+            notificationsContainer.removeChild(methodSelectWrapper);
+            flexContainer.appendChild(methodSelectWrapper);
         }
     }
+
 
     awaitBackgroundMessage(messageAction)
     {
@@ -627,55 +613,74 @@ class PopupController
             chrome.runtime.onMessage.addListener(listener);
         });
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Miscellaneous                                                                                  //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    toggleLoader()
+    {
+        let loader = document.querySelector(".loader");
+        if (loader)
+        {
+            loader.remove();
+        }
+        else
+        {
+            loader = document.createElement("div");
+            loader.className = "loader";
+            document.body.prepend(loader);
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () =>
 {
     const popupController = await PopupController.init();
 
+    // Header
     popupController.appendLogoIcon();
     popupController.appendSettingsButton();
 
-    popupController.appendLocationInput();
-
-    const dropdowns = [
-        { labelText: "Prayer Calculation Method", optionsMap: utils.PRAYER_CALCULATION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "calculationMethodId" },
-        { labelText: "Asr Jurisdiction Method", optionsMap: utils.ASR_JURISDICTION_METHOD_IDS, parentObject: popupController.storage.parameters, objectKey: "asrMethodId" },
-        { labelText: "Notifications Minutes Before", optionsMap: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, parentObject: popupController.storage, objectKey: "notificationsMinutesBefore", containerId: "notifications-container" },
-    ];
-    for (const config of dropdowns)
-    {
-        await popupController.appendDropdown(config);
-    }
-
-    popupController.createNotificationToggle("notifications-container");
-
+    // Main Page
     if (popupController.storage && popupController.storage.prayerTimes)
     {
         const dailyPrayerTimes = popupController.getPrayerTimesByDate(new Date());
         popupController.displayPrayerTimes(dailyPrayerTimes);
     }
 
-    // Close dropdowns when clicking outside
-    document.addEventListener("click", (event) =>
+    // Settings Page
+    popupController.appendLocationInput();
+    const dropdowns = [
+        { labelText: "Prayer Calculation Method", optionsDictionary: utils.PRAYER_CALCULATION_METHOD_IDS, controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "calculationMethodId" },
+        { labelText: "Asr Jurisdiction Method", optionsDictionary: utils.ASR_JURISDICTION_METHOD_IDS, controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "asrMethodId" },
+        { labelText: "Notifications Minutes Before", optionsDictionary: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, controllerParentObject: popupController.storage, controllerParentObjectKey: "notificationsMinutesBefore", containerId: "notifications-container" },
+    ];
+    for (const config of dropdowns)
     {
-        dropdowns.forEach((dropdown, i) =>
-        {
-            const methodSelect = document.querySelectorAll(".method-select")[i];
-            const optionsContainer = document.querySelectorAll(".method-container>.options")[i];
-            if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
-            {
-                optionsContainer.style.display = "none";
-            }
-        });
+        await popupController.appendDropdown(config);
+    }
+    popupController.createNotificationToggle("notifications-container");
 
-        // Location dropdown
-        const locationContainer = document.querySelector(".location-container>.options");
-        const locationSpan = document.querySelector(".location-name");
-        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
-        {
-            locationContainer.style.display = "none";
-            locationSpan.contentEditable = false;
-        }
-    });
+    // // Close dropdowns when clicking outside
+    // document.addEventListener("click", (event) =>
+    // {
+    //     dropdowns.forEach((dropdown, i) =>
+    //     {
+    //         const methodSelect = document.querySelectorAll(".method-select")[i];
+    //         const optionsContainer = document.querySelectorAll(".method-container>.options")[i];
+    //         if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
+    //         {
+    //             optionsContainer.style.display = "none";
+    //         }
+    //     });
+
+    //     // Location dropdown
+    //     const locationContainer = document.querySelector(".location-container>.options");
+    //     const locationSpan = document.querySelector(".location-name");
+    //     if (!locationContainer.contains(event.target) && event.target !== locationSpan)
+    //     {
+    //         locationContainer.style.display = "none";
+    //         locationSpan.contentEditable = false;
+    //     }
+    // });
 });
