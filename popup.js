@@ -291,6 +291,7 @@ class PopupController
                 // Create prayer elements
                 prayerContainer = document.createElement("button");
                 prayerContainer.className = "prayer";
+                if (this.storage.displayFlex) prayerContainer.classList.add("display-flex");
 
                 const nameSpan = document.createElement("span");
                 nameSpan.className = "prayer-name";
@@ -633,13 +634,24 @@ class PopupController
         displayToggleButton.id = "display-toggle";
         displayToggleButton.className = "icon-button";
         displayToggleButton.innerHTML = settingsSvg;
-        displayToggleButton.addEventListener("click", () =>
+        displayToggleButton.addEventListener("click", async () =>
         {
+            this.toggleLoader();
+
             const prayerElements = document.querySelectorAll(".prayer");
             prayerElements.forEach(el =>
             {
                 el.classList.add("display-flex");
             });
+
+            const previousStorage = structuredClone(this.storage);
+            this.storage.displayFlex = true;
+
+            // Update storage
+            await chrome.storage.local.set(this.storage);
+            await this.onStorageChange(previousStorage);
+
+            this.toggleLoader();
         });
 
         const settings2Svg = await fetch("icons/align-space-around.svg").then(res => res.text());
@@ -647,13 +659,24 @@ class PopupController
         displayToggleButton2.id = "display-toggle-2";
         displayToggleButton2.className = "icon-button";
         displayToggleButton2.innerHTML = settings2Svg;
-        displayToggleButton2.addEventListener("click", () =>
+        displayToggleButton2.addEventListener("click", async () =>
         {
+            this.toggleLoader();
+
             const prayerElements = document.querySelectorAll(".prayer");
             prayerElements.forEach(el =>
             {
                 el.classList.remove("display-flex");
             });
+
+            const previousStorage = structuredClone(this.storage);
+            this.storage.displayFlex = false;
+
+            // Update storage
+            await chrome.storage.local.set(this.storage);
+            await this.onStorageChange(previousStorage);
+
+            this.toggleLoader();
         });
 
         // Append

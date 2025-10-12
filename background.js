@@ -25,6 +25,9 @@ class BackgroundController
             {
                 switch (Object.keys(changes)[0])
                 {
+                    case "displayFlex":
+                        this.onDisplayFlexChanged(changes.displayFlex);
+                        break;
                     case "isPrayed":
                         this.onIsPrayedChanged(changes.isPrayed);
                         break;
@@ -275,13 +278,13 @@ class BackgroundController
         try
         {
             // chrome.local.storage.clear(); // TODO test when less than 1 hour
-            const keys = Object.keys(utils.STORAGE_DEFAULTS);
+            const keys = Object.keys(utils.DEFAULT_STORAGE_VALUES);
             const existing = await chrome.storage.local.get(keys);
 
             // If existing already has a value for that key, use it
             // Otherwise, fall back to the default value in this.defaultStorageValues
             const merged = Object.fromEntries(
-                keys.map(key => [key, existing[key] ?? utils.STORAGE_DEFAULTS[key]])
+                keys.map(key => [key, existing[key] ?? utils.DEFAULT_STORAGE_VALUES[key]])
             );
 
             await chrome.storage.local.set(merged);
@@ -474,6 +477,12 @@ class BackgroundController
             //     .catch((error) => { }); // Ignore errors if no popup is open TODO Fix
             // TODO
         }
+    }
+
+    async onDisplayFlexChanged(change)
+    {
+        this.storage.displayFlex = change.newValue;
+        utils.timeLog('displayFlex changed from', change.oldValue, 'to', change.newValue);
     }
 
     async onIsPrayedChanged(change)

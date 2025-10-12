@@ -44,8 +44,9 @@ export const NOTIFICATIONS_MINUTES_BEFORE_OPTIONS =
     30: "30 minutes before",
 }
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
-export const STORAGE_DEFAULTS =
+export const DEFAULT_STORAGE_VALUES =
 {
+    displayFlex: false,
     isPrayed: false,
     isNotificationsOn: true,
     notificationsMinutesBefore: "0",

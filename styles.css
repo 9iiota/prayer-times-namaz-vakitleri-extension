@@ -309,6 +309,14 @@ svg>path
     filter: brightness(.9);
 }
 
+.flex-container
+{
+    display: flex;
+    gap: var(--primary-padding);
+    justify-content: center;
+    width: 100%;
+}
+
 .loader
 {
     animation: rotate .5s linear infinite;
@@ -369,14 +377,4 @@ svg>path
     {
         clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%);
     }
-}
-
-/* ----------------------------------------------- */
-
-.flex-container
-{
-    display: flex;
-    gap: var(--primary-padding);
-    justify-content: center;
-    width: 100%;
 }
