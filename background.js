@@ -25,8 +25,8 @@ class BackgroundController
             {
                 switch (Object.keys(changes)[0])
                 {
-                    case "displayFlex":
-                        this.onDisplayFlexChanged(changes.displayFlex);
+                    case "display":
+                        this.onDisplayChanged(changes.display);
                         break;
                     case "isPrayed":
                         this.onIsPrayedChanged(changes.isPrayed);
@@ -549,10 +549,10 @@ class BackgroundController
         }
     }
 
-    async onDisplayFlexChanged(change)
+    async onDisplayChanged(change)
     {
-        this.storage.displayFlex = change.newValue;
-        utils.timeLog('displayFlex changed from', change.oldValue, 'to', change.newValue);
+        this.storage.display = change.newValue;
+        utils.timeLog('display changed from', change.oldValue, 'to', change.newValue);
     }
 
     async onIsPrayedChanged(change)

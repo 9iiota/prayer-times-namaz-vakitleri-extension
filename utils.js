@@ -46,7 +46,7 @@ export const NOTIFICATIONS_MINUTES_BEFORE_OPTIONS =
 export const PRAYER_NAMES = ["Fajr", "Sun", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const DEFAULT_STORAGE_VALUES =
 {
-    displayFlex: false,
+    display: "grid",
     isPrayed: false,
     isNotificationsOn: true,
     notificationsMinutesBefore: "0",

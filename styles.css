@@ -127,12 +127,13 @@ svg path
 
 #notifications-button.active,
 #display-flex.active,
-#display-grid.active
+#display-grid.active,
+#display-columns.active
 {
     background-color: var(--light-green-color);
 }
 
-.icon-button:not(#notifications-button, #display-flex, #display-grid).active
+.icon-button:not(#notifications-button, #display-flex, #display-grid, #display-columns).active
 {
     filter: brightness(.8);
 }
@@ -173,9 +174,20 @@ svg path
     padding-top: var(--primary-padding);
 }
 
+.grid-container.display-columns
+{
+    grid-template-columns: repeat(2, 1fr);
+}
+
 .prayer.display-flex
 {
     display: flex;
+    padding: calc(var(--primary-padding) * 2);
+    gap: var(--primary-gap);
+}
+
+.prayer.display-columns
+{
     padding: calc(var(--primary-padding) * 2);
     gap: var(--primary-gap);
 }

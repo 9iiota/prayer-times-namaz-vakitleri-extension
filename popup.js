@@ -54,6 +54,7 @@ class PopupController
         header.prepend(logoIcon);
     }
 
+    // TODO clean up and modularize
     async addSettingsButtonEventListeners()
     {
         const content = document.querySelector(".content");
@@ -66,18 +67,60 @@ class PopupController
         settingsButton.replaceWith(settingsButton.cloneNode(true));
         settingsButton = document.getElementById("settings-button");
 
+        const mainPage = document.getElementById("main-page");
+        const settingsPage = document.getElementById("settings-page");
+
+        function resizePopupToFitContent()
+        {
+            const popupContainer = document.querySelector(".popup-container");
+            if (!popupContainer) return;
+
+            popupContainer.style.height = "auto"; // reset to measure accurately
+            const newHeight = popupContainer.scrollHeight;
+            document.body.style.height = `${newHeight}px`;
+        }
+
         // Toggle settings on click
         settingsButton.addEventListener("click", () =>
         {
             content.classList.toggle("show-settings");
             settingsButton.classList.toggle("active");
+
+            // Toggle visible page
+            const isSettingsVisible = content.classList.contains("show-settings");
+            if (isSettingsVisible)
+            {
+                mainPage.style.display = "none";
+                settingsPage.style.display = "block";
+            }
+            else
+            {
+                settingsPage.style.display = "none";
+                mainPage.style.display = "block";
+            }
+
+            // Adjust popup height
+            resizePopupToFitContent();
         });
 
         // Toggle settings if no prayer times yet
         if (!this.storage.prayerTimes)
         {
-            content.classList.toggle("show-settings");
-            settingsButton.classList.toggle("active");
+            content.classList.add("show-settings");
+            settingsButton.classList.add("active");
+
+            mainPage.style.display = "none";
+            settingsPage.style.display = "block";
+
+            resizePopupToFitContent();
+        }
+        else
+        {
+            // Ensure main page shows by default
+            settingsPage.style.display = "none";
+            mainPage.style.display = "block";
+
+            resizePopupToFitContent();
         }
     }
 
@@ -191,6 +234,10 @@ class PopupController
         {
             switch (key)
             {
+                case "display":
+                    // Update storage
+                    chrome.storage.local.set({ display: this.storage.display });
+                    break;
                 case "isPrayed":
                     // Update storage
                     chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
@@ -323,10 +370,8 @@ class PopupController
                     // Clone previous storage for comparison
                     const previousStorage = structuredClone(this.storage);
 
-                    // Toggle isPrayed state
-                    this.storage.isPrayed = !this.storage.isPrayed;
-
                     // Update storage
+                    this.storage.isPrayed = !this.storage.isPrayed;
                     await this.onStorageChange(previousStorage);
                 });
 
@@ -499,7 +544,6 @@ class PopupController
 
                 // Update storage
                 controllerParentObject[controllerParentObjectKey] = option.getAttribute("value");
-                await chrome.storage.local.set(this.storage);
                 await this.onStorageChange(previousStorage);
 
                 // Remove selected class from all options
@@ -547,7 +591,6 @@ class PopupController
 
             // Update storage
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
-            await chrome.storage.local.set(this.storage);
             await this.onStorageChange(previousStorage);
 
             // Update icon
@@ -561,76 +604,64 @@ class PopupController
         });
     }
 
-    async addDisplayToggleEventListeners(displayFlexButtonId, displayGridButtonId)
+    // TODO clean up and modularize
+    async addDisplayToggleEventListeners(displayFlexButtonId, displayGridButtonId, displayColumnsButtonId)
     {
         const displayFlexButton = document.getElementById(displayFlexButtonId);
         const displayGridButton = document.getElementById(displayGridButtonId);
-        if (!displayFlexButton || !displayGridButton) return; // Can't proceed without buttons
+        const displayColumnsButton = document.getElementById(displayColumnsButtonId);
 
-        // Set initial active state
-        if (this.storage.displayFlex)
-        {
-            displayFlexButton.classList.add("active");
-            displayGridButton.classList.remove("active");
-        }
-        else
-        {
-            displayFlexButton.classList.remove("active");
-            displayGridButton.classList.add("active");
-        }
+        if (!displayFlexButton || !displayGridButton || !displayColumnsButton || !this.mainPageGridContainer) return;
 
-        // Toggle display mode on click
-        displayFlexButton.addEventListener("click", async () =>
+        const prayerElements = () => document.querySelectorAll(".prayer");
+
+        const setActiveButton = (mode) =>
         {
-            if (this.storage.displayFlex) return; // Already in flex mode
+            displayFlexButton.classList.toggle("active", mode === "flex");
+            displayGridButton.classList.toggle("active", mode === "grid");
+            displayColumnsButton.classList.toggle("active", mode === "columns");
+        };
+
+        const applyDisplayMode = (mode) =>
+        {
+            const elements = prayerElements();
+            this.mainPageGridContainer.classList.toggle("display-columns", mode === "columns");
+
+            elements.forEach(el =>
+            {
+                el.classList.toggle("display-flex", mode === "flex");
+                el.classList.toggle("display-columns", mode === "columns");
+                if (mode === "grid")
+                {
+                    el.classList.remove("display-flex", "display-columns");
+                }
+            });
+        };
+
+        const updateDisplayMode = async (mode) =>
+        {
+            if (this.storage.display === mode) return;
 
             this.toggleLoader();
-            const previousStorage = structuredClone(this.storage);
 
-            // Update storage
-            this.storage.displayFlex = true;
-            await chrome.storage.local.set(this.storage);
+            const previousStorage = { ...this.storage };
+            this.storage.display = mode;
             await this.onStorageChange(previousStorage);
 
-            // Update button states
-            displayFlexButton.classList.add("active");
-            displayGridButton.classList.remove("active");
-
-            // Update prayer display mode
-            const prayerElements = document.querySelectorAll(".prayer");
-            prayerElements.forEach(el =>
-            {
-                el.classList.add("display-flex");
-            });
+            setActiveButton(mode);
+            applyDisplayMode(mode);
 
             this.toggleLoader();
-        });
+        };
 
-        displayGridButton.addEventListener("click", async () =>
-        {
-            if (!this.storage.displayFlex) return; // Already in grid mode
+        // Set initial mode
+        setActiveButton(this.storage.display);
+        applyDisplayMode(this.storage.display);
 
-            this.toggleLoader();
-            const previousStorage = structuredClone(this.storage);
-
-            // Update storage
-            this.storage.displayFlex = false;
-            await chrome.storage.local.set(this.storage);
-            await this.onStorageChange(previousStorage);
-
-            // Update button states
-            displayFlexButton.classList.remove("active");
-            displayGridButton.classList.add("active");
-
-            // Update prayer display mode
-            const prayerElements = document.querySelectorAll(".prayer");
-            prayerElements.forEach(el =>
-            {
-                el.classList.remove("display-flex");
-            });
-
-            this.toggleLoader();
-        });
+        // Event listeners
+        displayFlexButton.addEventListener("click", () => updateDisplayMode("flex"));
+        displayGridButton.addEventListener("click", () => updateDisplayMode("grid"));
+        displayColumnsButton.addEventListener("click", () => updateDisplayMode("columns"));
     }
 
     awaitBackgroundMessage(messageAction)
@@ -696,7 +727,7 @@ document.addEventListener("DOMContentLoaded", async () =>
     }
 
     popupController.addNotificationEventListeners("notifications-button");
-    popupController.addDisplayToggleEventListeners("display-flex", "display-grid");
+    popupController.addDisplayToggleEventListeners("display-flex", "display-grid", "display-columns");
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
@@ -707,7 +738,8 @@ document.addEventListener("DOMContentLoaded", async () =>
         {
             const methodSelect = dropdown.querySelector(".method-select");
             const optionsContainer = dropdown.querySelector(".method-select-wrapper>.options");
-            if (!methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
+
+            if (methodSelect && optionsContainer && !methodSelect.contains(event.target) && !optionsContainer.contains(event.target))
             {
                 optionsContainer.style.display = "none";
             }
