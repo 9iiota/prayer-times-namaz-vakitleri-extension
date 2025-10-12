@@ -75,27 +75,6 @@ class BackgroundController
 
     static instance = null;
 
-    async fetchCitiesIslamVakti(countryId)
-    {
-        const res = await fetch("https://islamvakti.com/ajax/country", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-            body: `country_id=${encodeURIComponent(countryId)}`
-        });
-        if (!res.ok) throw new Error('Network response not ok');
-        const text = await res.text();
-
-        // Capture <option value='id'>City Name</option>
-        const cityRegex = /<option value='(\d+)'>([^<]+)<\/option>/g;
-        let cities = [];
-        let cityMatch;
-        while ((cityMatch = cityRegex.exec(text)) !== null)
-        {
-            cities.push({ id: cityMatch[1], name: cityMatch[2].trim() });
-        }
-        return cities;
-    }
-
     fuzzySearch(query, list, keys = ["name"], threshold = 0.3)
     {
         if (!query || !list || list.length === 0) return null;
@@ -110,30 +89,76 @@ class BackgroundController
         return results.length > 0 ? results[0].item : null;
     }
 
-    async fetchPrayerTimesIslamVakti()
+    async fetchStateCitiesNamazVakitleri(countryId, stateId)
     {
-        const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
-        if (!countryId) throw new Error(`Country not found: ${this.storage.parameters.country}`);
+        const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(stateId)}&Culture=en-US`);
+        if (!response.ok) throw new Error('Network response not ok');
+        const stateJson = await response.json();
+        return stateJson.StateRegionList;
+    }
 
-        const cities = await this.fetchCitiesIslamVakti(countryId)
-        const cityId = this.fuzzySearch(this.storage.parameters.city, cities)?.id;
-        if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country ID: ${countryId}`);
+    async fetchCitiesNamazVakitleri(countryId)
+    {
+        const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${encodeURIComponent(countryId)}&Culture=en-US`);
+        if (!response.ok) throw new Error('Network response not ok');
+        const json = await response.json();
 
-        const response = await fetch("https://islamvakti.com/home/vakitler", {
-            headers: { "Referer": `https://islamvakti.com/home/index/${encodeURIComponent(countryId)}/${encodeURIComponent(cityId)}/yok` }
+        let citiesList = [];
+        if (json.StateRegionList === null && json.HasStateList === true)
+        {
+            // Some countries have states/provinces, so we need to find the state first
+            // And then fetch the cities for that state
+            const states = json.StateList.map(item =>
+            {
+                const values = Object.values(item);
+                return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
+            }).filter(item => item.name && item.id);
+
+            const stateId = this.fuzzySearch(this.storage.parameters.state || this.storage.parameters.city, states)?.id;
+            if (!stateId) throw new Error(`State not found: ${this.storage.parameters.state || this.storage.parameters.city} in country ID: ${countryId}`);
+
+            citiesList = await this.fetchStateCitiesNamazVakitleri(countryId, stateId);
+        }
+        else
+        {
+            citiesList = json.StateRegionList;
+        }
+
+        // Map cities to simplified objects
+        const cities = citiesList.map(item =>
+        {
+            const values = Object.values(item);
+            return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
+        }).filter(item => item.name && item.id);
+        return cities;
+    }
+
+    async fetchCitiesIslamVakti(countryId)
+    {
+        const response = await fetch("https://islamvakti.com/ajax/country", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+            body: `country_id=${encodeURIComponent(countryId)}`
         });
-        if (!response.ok) throw new Error(`Failed to fetch prayer times from IslamVakti. Status: ${response.status}`);
+        if (!response.ok) throw new Error('Network response not ok');
         const text = await response.text();
 
-        // Capture everything from the first <tr> with a background-color style to the end of the string
-        // The first <tr> with a background-color style indicates today's prayer times
-        const futurePrayersTextRegex = /<tr[^>]*style=["'][^"']*background-color[^"']*["'][^>]*>[\s\S]*/i;
-        const futurePrayersMatch = text.match(futurePrayersTextRegex);
-        if (!futurePrayersMatch) throw new Error('Unexpected response format from prayer times site');
+        // Capture <option value='id'>City Name</option>
+        const cityRegex = /<option value='(\d+)'>([^<]+)<\/option>/g;
+        let cities = [];
+        let cityMatch;
+        while ((cityMatch = cityRegex.exec(text)) !== null)
+        {
+            cities.push({ id: cityMatch[1], name: cityMatch[2].trim() });
+        }
+        return cities;
+    }
 
+    getPrayerTimesFromHTML(text)
+    {
         // Capture <tr>...</tr>
         const prayerRowsRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
-        const prayerRowsMatch = futurePrayersMatch[0].match(prayerRowsRegex);
+        const prayerRowsMatch = text.match(prayerRowsRegex);
         if (!prayerRowsMatch) throw new Error('No prayer rows found in response');
 
         let previousDate = null;
@@ -166,6 +191,39 @@ class BackgroundController
         return prayerTimes;
     }
 
+    async fetchPrayerTimesNamazVakitleri(countryId)
+    {
+        const cities = await this.fetchCitiesNamazVakitleri(countryId)
+        const cityId = this.fuzzySearch(this.storage.parameters.city, cities)?.id;
+        if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country ID: ${countryId}`);
+
+        const response = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/${encodeURIComponent(cityId)}`);
+        if (!response.ok) throw new Error(`Failed to fetch prayer times from IslamVakti. Status: ${response.status}`);
+        const text = await response.text();
+        return this.getPrayerTimesFromHTML(text);
+    }
+
+    async fetchPrayerTimesIslamVakti(countryId)
+    {
+        const cities = await this.fetchCitiesIslamVakti(countryId)
+        const cityId = this.fuzzySearch(this.storage.parameters.city, cities)?.id;
+        if (!cityId) throw new Error(`City not found: ${this.storage.parameters.city} in country ID: ${countryId}`);
+
+        const response = await fetch("https://islamvakti.com/home/vakitler", {
+            headers: { "Referer": `https://islamvakti.com/home/index/${encodeURIComponent(countryId)}/${encodeURIComponent(cityId)}/yok` }
+        });
+        if (!response.ok) throw new Error(`Failed to fetch prayer times from IslamVakti. Status: ${response.status}`);
+        const text = await response.text();
+
+        // Capture everything from the first <tr> with a background-color style to the end of the string
+        // The first <tr> with a background-color style indicates today's prayer times
+        const futurePrayersTextRegex = /<tr[^>]*style=["'][^"']*background-color[^"']*["'][^>]*>[\s\S]*/i;
+        const futurePrayersMatch = text.match(futurePrayersTextRegex);
+        if (!futurePrayersMatch) throw new Error('Unexpected response format from prayer times site');
+
+        return this.getPrayerTimesFromHTML(futurePrayersMatch[0]);
+    }
+
     async fetchPrayerTimesIslamicFinder()
     {
         const response = await fetch(`https://www.islamicfinder.us/index.php/api/prayer_times?show_entire_month&country=${encodeURIComponent(this.storage.parameters.countryCode)}&zipcode=${encodeURIComponent(this.storage.parameters.zipCode)}&latitude=${encodeURIComponent(this.storage.parameters.latitude)}&longitude=${encodeURIComponent(this.storage.parameters.longitude)}&method=${encodeURIComponent(this.storage.parameters.calculationMethodId)}&juristic=${encodeURIComponent(this.storage.parameters.asrMethodId)}&time_format=0`);
@@ -186,29 +244,44 @@ class BackgroundController
     {
         let prayerTimes = [];
 
-        // Try fetching from IslamVakti first
         if (this.storage.parameters.calculationMethodId === "13" && this.storage.parameters.asrMethodId === "0" && this.storage.parameters.country && this.storage.parameters.city)
         {
+            const countryId = Object.keys(countryMap).find(key => countryMap[key] === this.storage.parameters.country);
+            if (!countryId) throw new Error(`Country not found: ${this.storage.parameters.country}`);
+
+            // Try fetching from Namaz Vakitleri first
             try
             {
-                utils.timeLog("Fetching prayer times from IslamVakti...");
-                prayerTimes = await this.fetchPrayerTimesIslamVakti();
+                utils.timeLog("Fetching prayer times from Namaz Vakitleri...");
+                prayerTimes = await this.fetchPrayerTimesNamazVakitleri(countryId);
                 if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamVakti");
-
-                utils.timeLog(`Fetched ${prayerTimes.length} prayer times from IslamVakti`);
+                utils.timeLog(`Fetched ${prayerTimes.length} prayer times from Namaz Vakitleri`);
             }
             catch (error)
             {
-                console.error("Error fetching prayer times from IslamVakti:", error);
+                console.error("Error fetching prayer times from Namaz Vakitleri:", error);
+
+                // Fallback to IslamVakti if Namaz Vakitleri fails
+                try
+                {
+                    utils.timeLog("Retrying with IslamVakti...");
+                    prayerTimes = await this.fetchPrayerTimesIslamVakti(countryId);
+                    if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamVakti");
+                    utils.timeLog(`Fetched ${prayerTimes.length} prayer times from IslamVakti`);
+                }
+                catch (error)
+                {
+                    console.error("Error fetching prayer times from IslamVakti:", error);
+                }
             }
         }
 
         if (!prayerTimes || prayerTimes.length === 0)
         {
-            // Fallback to API if IslamVakti fails
+            // Fallback to IslamicFinder API if both Namaz Vakitleri and IslamVakti fail or if custom calculation methods are used
             try
             {
-                utils.timeLog("Falling back to IslamicFinder API...");
+                utils.timeLog("Fetcgin prayer times from IslamicFinder API...");
                 prayerTimes = await this.fetchPrayerTimesIslamicFinder();
                 if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamicFinder API");
 
@@ -219,7 +292,6 @@ class BackgroundController
                 console.error("Error fetching prayer times from IslamicFinder API:", error);
             }
         }
-
         return prayerTimes;
     }
 
