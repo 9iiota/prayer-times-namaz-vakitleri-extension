@@ -77,7 +77,7 @@ svg
     height: auto;
 }
 
-svg>path
+svg path
 {
     fill: var(--primary-text-color);
 }
@@ -125,12 +125,14 @@ svg>path
     width: 14px;
 }
 
-#notifications-button.active
+#notifications-button.active,
+#display-flex.active,
+#display-grid.active
 {
     background-color: var(--light-green-color);
 }
 
-.icon-button:not(#notifications-button).active
+.icon-button:not(#notifications-button, #display-flex, #display-grid).active
 {
     filter: brightness(.8);
 }

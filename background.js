@@ -35,6 +35,7 @@ class BackgroundController
                         this.onIsNotificationsOnChanged(changes.isNotificationsOn);
                         break;
                     case "notificationsMinutesBefore":
+                        this.onNotificationsMinutesBeforeChanged(changes.notificationsMinutesBefore);
                         break;
                     case "parameters":
                         await this.onParametersChanged(changes.parameters);
@@ -46,9 +47,6 @@ class BackgroundController
                             {
                                 utils.timeLog(`Popup page not open, cannot send ${action} message.`, error);
                             });
-                        break;
-                    case "prayerTimes":
-                        // await this.onPrayerTimesChanged(changes.prayerTimes);
                         break;
                     default:
                         break;
@@ -281,7 +279,7 @@ class BackgroundController
             // Fallback to IslamicFinder API if both Namaz Vakitleri and IslamVakti fail or if custom calculation methods are used
             try
             {
-                utils.timeLog("Fetcgin prayer times from IslamicFinder API...");
+                utils.timeLog("Fetching prayer times from IslamicFinder API...");
                 prayerTimes = await this.fetchPrayerTimesIslamicFinder();
                 if (!prayerTimes || prayerTimes.length === 0) throw new Error("No prayer times found from IslamicFinder API");
 
@@ -570,6 +568,12 @@ class BackgroundController
         utils.timeLog('isNotificationsOn changed from', change.oldValue, 'to', change.newValue);
     }
 
+    async onNotificationsMinutesBeforeChanged(change)
+    {
+        this.storage.notificationsMinutesBefore = change.newValue;
+        utils.timeLog('notificationsMinutesBefore changed from', change.oldValue, 'to', change.newValue);
+    }
+
     async onParametersChanged(change)
     {
         this.storage.parameters = change.newValue;
@@ -585,15 +589,6 @@ class BackgroundController
             this.nextPrayerIndex = null;
             await this.startBadgeTask();
         }
-    }
-
-    async onPrayerTimesChanged(change)
-    {
-        this.storage.prayerTimes = change.newValue;
-        utils.timeLog(`prayerTimes changed from ${change.oldValue?.length || 0} entries to ${change.newValue?.length || 0} entries`);
-        this.todayPrayerTimes = null;
-        this.nextPrayerIndex = null;
-        this.startBadgeTask();
     }
 
     async getDatePrayerTimes(date = new Date())

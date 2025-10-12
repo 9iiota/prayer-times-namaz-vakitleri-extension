@@ -10,14 +10,100 @@
 <body>
     <div class="popup-container">
         <div class="header">
+            <img id="logo-icon" src="icons/icon.svg">
             <span class="title">Prayer Times</span>
+            <button id="settings-button" class="icon-button">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    fill="#374151">
+                    <path
+                        d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z" />
+                </svg>
+            </button>
         </div>
         <div class="content">
             <div id="main-page" class="page">
                 <div class="grid-container"></div>
             </div>
             <div id="settings-page" class="page">
-                <div class="grid-container"></div>
+                <div class="grid-container">
+                    <div class="location-container">
+                        <span class="location-name">Click to type city name</span>
+                        <div class="options"></div>
+                    </div>
+                    <div class="method-container">
+                        <span class="method-label">Prayer Calculation Method</span>
+                        <div class="method-select-wrapper">
+                            <button id="prayer-calculation-method-select" class="method-select">
+                                <span class="method-name"></span>
+                            </button>
+                            <div id="prayer-calculation-method-options" class="options">
+                                <div value="0">Jafari - Ithna Ashari</div>
+                                <div value="1">Karachi - University of Islamic Sciences</div>
+                                <div value="2">ISNA - Islamic Society of North America</div>
+                                <div value="3">MWL - Muslim World League</div>
+                                <div value="4">Mecca - Umm al-Qura</div>
+                                <div value="5">Egyptian General Authority of Survey</div>
+                                <div value="7">University of Tehran - Institute of Geophysics</div>
+                                <div value="8">Algerian Minister of Religious Affairs and Wakfs</div>
+                                <div value="9">Gulf 90 Minutes Fixed Isha</div>
+                                <div value="10">Egyptian General Authority of Survey (Bis)</div>
+                                <div value="11">UOIF - Union Des Organisations Islamiques De France</div>
+                                <div value="12">Sistem Informasi Hisab Rukyat Indonesia</div>
+                                <div value="13">Diyanet İşleri Başkanlığı</div>
+                                <div value="14">Germany Custom</div>
+                                <div value="15">Russia Custom</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="method-container">
+                        <span class="method-label">Asr Jurisdiction Method</span>
+                        <div class="method-select-wrapper">
+                            <button id="asr-jurisdiction-method-select" class="method-select">
+                                <span class="method-name"></span>
+                            </button>
+                            <div id="asr-jurisdiction-method-options" class="options">
+                                <div value="0">Shafi, Hanbali, Maliki</div>
+                                <div value="1">Hanafi</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="method-container">
+                        <span class="method-label">Notifications Minutes Before</span>
+                        <div class="flex-container">
+                            <button id="notifications-button" class="icon-button active"></button>
+                            <div class="method-select-wrapper">
+                                <button id="notifications-minutes-before-select" class="method-select">
+                                    <span class="method-name"></span>
+                                </button>
+                                <div id="notifications-minutes-before-options" class="options">
+                                    <div value="0">At time of prayer</div>
+                                    <div value="5">5 minutes before</div>
+                                    <div value="10">10 minutes before</div>
+                                    <div value="15">15 minutes before</div>
+                                    <div value="20">20 minutes before</div>
+                                    <div value="25">25 minutes before</div>
+                                    <div value="30">30 minutes before</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-container">
+                        <button id="display-flex" class="icon-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                                fill="#374151">
+                                <path
+                                    d="M800-80v-800h80v800h-80ZM80-80v-800h80v800H80Zm520-200v-400h120v400H600Zm-360 0v-400h120v400H240Z" />
+                            </svg>
+                        </button>
+                        <button id="display-grid" class="icon-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                                fill="#374151">
+                                <path
+                                    d="M80-800v-80h800v80H80Zm0 720v-80h800v80H80Zm200-520v-120h400v120H280Zm0 360v-120h400v120H280Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -54,32 +54,29 @@ class PopupController
         header.prepend(logoIcon);
     }
 
-    async appendSettingsButton()
+    async addSettingsButtonEventListeners()
     {
-        // Check if already appended
-        let settingsButton = document.getElementById("settings-button");
-        if (settingsButton) return;
+        const content = document.querySelector(".content");
+        if (!content) return; // Can't proceed without content container
 
-        // Create settings button element
-        const settingsSvg = await fetch("icons/settings.svg").then(res => res.text());
-        settingsButton = document.createElement("button");
-        settingsButton.id = "settings-button";
-        settingsButton.className = "icon-button";
-        settingsButton.innerHTML = settingsSvg;
+        let settingsButton = document.getElementById("settings-button");
+        if (!settingsButton) return; // Can't proceed without settings button
+
+        // Remove existing event listeners (safety net)
+        settingsButton.replaceWith(settingsButton.cloneNode(true));
+        settingsButton = document.getElementById("settings-button");
+
+        // Toggle settings on click
         settingsButton.addEventListener("click", () =>
         {
-            document.querySelector(".content").classList.toggle("show-settings");
+            content.classList.toggle("show-settings");
             settingsButton.classList.toggle("active");
         });
 
-        // Append to header
-        const header = document.querySelector(".header");
-        header.append(settingsButton);
-
-        // If no prayer times yet, open settings by default
+        // Toggle settings if no prayer times yet
         if (!this.storage.prayerTimes)
         {
-            document.querySelector(".content").classList.toggle("show-settings");
+            content.classList.toggle("show-settings");
             settingsButton.classList.toggle("active");
         }
     }
@@ -197,20 +194,21 @@ class PopupController
                 case "isPrayed":
                     // Update storage
                     chrome.storage.local.set({ isPrayed: this.storage.isPrayed });
-                    utils.timeLog("isPrayed changed to:", this.storage.isPrayed);
 
                     // Update current prayer background color
                     await this.updateCurrentPrayerBackgroundColor();
                     break;
                 case "isNotificationsOn":
-                    // TODO
+                    // Update storage
+                    chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
                     break;
                 case "notificationsMinutesBefore":
+                    // Update storage
+                    chrome.storage.local.set({ notificationsMinutesBefore: this.storage.notificationsMinutesBefore });
                     break;
                 case "parameters":
                     // Update storage
                     chrome.storage.local.set({ parameters: this.storage.parameters });
-                    utils.timeLog(`Parameters changed from `, previousStorage.parameters, "to", this.storage.parameters);
 
                     // Wait for background script to process new parameters and update prayer times
                     const data = await this.awaitBackgroundMessage("prayerTimesProcessed");
@@ -403,18 +401,13 @@ class PopupController
         locationResultsContainer.style.display = "block";
     }
 
-    appendLocationInput()
+    addLocationEventListeners()
     {
-        // Check if already appended
-        let locationContainer = document.querySelector(".location-container");
-        if (locationContainer) return;
+        const locationContainer = document.querySelector(".location-container");
+        if (!locationContainer) return; // Can't proceed without container
 
-        // Create location input elements
-        locationContainer = document.createElement("div");
-        locationContainer.className = "location-container";
-
-        const locationName = document.createElement("span");
-        locationName.className = "location-name";
+        const locationName = locationContainer.querySelector(".location-name");
+        if (!locationName) return; // Can't proceed without location name span
 
         // Set location name
         if (this.storage.parameters.country && this.storage.parameters.city)
@@ -427,10 +420,6 @@ class PopupController
             {
                 locationName.textContent = `${this.storage.parameters.city}, ${this.storage.parameters.country}`;
             }
-        }
-        else
-        {
-            locationName.textContent = "Click to type city name";
         }
 
         // Make location name editable on click
@@ -468,70 +457,48 @@ class PopupController
 
             this.toggleLoader();
         });
-
-        // Create options container for dropdown results
-        const optionsContainer = document.createElement("div");
-        optionsContainer.className = "options";
-
-        // Assemble and prepend to settings grid
-        locationContainer.appendChild(locationName);
-        locationContainer.appendChild(optionsContainer);
-        this.settingsPageGridContainer.prepend(locationContainer);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dropdowns                                                                                      //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO clean from here
-    async appendDropdown({ labelText, optionsDictionary, controllerParentObject, controllerParentObjectKey, containerId = null })
+    async addDropdownEventListeners({ methodSelectId, optionsContainerId, controllerParentObject, controllerParentObjectKey })
     {
-        const methodContainer = document.createElement("div");
-        if (containerId) methodContainer.id = containerId;
-        methodContainer.className = "method-container";
-        this.settingsPageGridContainer.appendChild(methodContainer);
+        const methodSelect = document.getElementById(methodSelectId);
+        if (!methodSelect) return; // Can't proceed without method select button
 
-        const methodLabel = document.createElement("span");
-        methodLabel.className = "method-label";
-        methodLabel.textContent = labelText;
-        methodContainer.appendChild(methodLabel);
+        const methodName = methodSelect.querySelector(".method-name");
+        if (!methodName) return; // Can't proceed without method name span
 
-        const methodSelectWrapper = document.createElement("div");
-        methodSelectWrapper.className = "method-select-wrapper";
-        methodContainer.appendChild(methodSelectWrapper);
-
-        const methodSelect = document.createElement("button");
-        methodSelect.className = "method-select";
-        methodSelectWrapper.appendChild(methodSelect);
-
-        const methodName = document.createElement("span");
-        methodName.className = "method-name";
-        methodSelect.appendChild(methodName);
-
-        const optionsContainer = document.createElement("div");
-        optionsContainer.className = "options";
-        methodSelectWrapper.appendChild(optionsContainer);
+        const optionsContainer = document.getElementById(optionsContainerId);
+        if (!optionsContainer) return; // Can't proceed without options container
 
         // Set chosen option
-        methodName.textContent = optionsDictionary[controllerParentObject[controllerParentObjectKey]];
+        const chosenOptionValue = controllerParentObject[controllerParentObjectKey];
+        const chosenOptionText = optionsContainer.querySelector(`.options div[value='${chosenOptionValue}']`)?.textContent;
+        if (!chosenOptionText) return; // Can't proceed without chosen option text
 
-        // Toggle dropdown
+        methodName.textContent = chosenOptionText;
+
+        // Toggle dropdown on click
         methodSelect.addEventListener("click", () =>
         {
             optionsContainer.style.display = optionsContainer.style.display === "block" ? "none" : "block";
         });
 
-        // Populate options
-        for (const [id, name] of Object.entries(optionsDictionary))
+        // Handle option selection
+        const options = optionsContainer.querySelectorAll("div");
+        if (options.length === 0) return; // Can't proceed without options
+
+        options.forEach(option =>
         {
-            const option = document.createElement("div");
-            option.textContent = name;
             option.addEventListener("click", async () =>
             {
                 this.toggleLoader();
                 const previousStorage = structuredClone(this.storage);
 
                 // Update storage
-                controllerParentObject[controllerParentObjectKey] = id;
+                controllerParentObject[controllerParentObjectKey] = option.getAttribute("value");
                 await chrome.storage.local.set(this.storage);
                 await this.onStorageChange(previousStorage);
 
@@ -542,66 +509,129 @@ class PopupController
                 option.classList.add("selected");
 
                 // Update displayed method name and close dropdown
-                methodName.textContent = name;
+                methodName.textContent = option.textContent;
                 optionsContainer.style.display = "none";
 
                 this.toggleLoader();
             });
-            if (methodName.textContent === name) option.classList.add("selected");
+        });
 
-            optionsContainer.appendChild(option);
-        }
+        // Highlight selected option
+        options.forEach(option =>
+        {
+            if (option.getAttribute("value") === chosenOptionValue)
+            {
+                option.classList.add("selected");
+            }
+        });
     }
 
-    async createNotificationToggle(containerId)
+    async addNotificationEventListeners(notificationsButtonId)
     {
-        const notificationsContainer = document.getElementById(containerId);
-        if (!notificationsContainer) return;
+        const notificationsButton = document.getElementById(notificationsButtonId);
+        if (!notificationsButton) return; // Can't proceed without button
 
-        // Prevent double initialization
-        if (notificationsContainer.querySelector("#notifications-button")) return;
-
-        // Create flex container to hold the icon + dropdown wrapper
-        const flexContainer = document.createElement("div");
-        flexContainer.className = "flex-container";
-
-        const methodLabel = notificationsContainer.querySelector(".method-label");
-        notificationsContainer.insertBefore(flexContainer, methodLabel.nextSibling);
-
-        // --- Create the bell icon button ---
+        // Set initial icon
         const svgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
         const bellSvg = await fetch(svgPath).then(res => res.text());
-
-        const notificationsButton = document.createElement("button");
-        notificationsButton.id = "notifications-button";
-        notificationsButton.className = "icon-button";
         notificationsButton.innerHTML = bellSvg;
-        flexContainer.appendChild(notificationsButton);
 
-        if (this.storage.isNotificationsOn)
-            notificationsButton.classList.add("active");
+        // Set initial active state
+        if (this.storage.isNotificationsOn) notificationsButton.classList.add("active");
 
+        // Toggle notifications on click
         notificationsButton.addEventListener("click", async () =>
         {
+            this.toggleLoader();
+            const previousStorage = structuredClone(this.storage);
+
+            // Update storage
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
+            await chrome.storage.local.set(this.storage);
+            await this.onStorageChange(previousStorage);
+
+            // Update icon
             const newSvgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
             const newSvg = await fetch(newSvgPath).then(res => res.text());
             notificationsButton.innerHTML = newSvg;
+
             notificationsButton.classList.toggle("active");
 
-            await chrome.storage.local.set({ isNotificationsOn: this.storage.isNotificationsOn });
-            utils.timeLog("Toggled notifications to:", this.storage.isNotificationsOn);
+            this.toggleLoader();
         });
-
-        // --- Move .method-select-wrapper next to the icon ---
-        const methodSelectWrapper = notificationsContainer.querySelector(".method-select-wrapper");
-        if (methodSelectWrapper)
-        {
-            notificationsContainer.removeChild(methodSelectWrapper);
-            flexContainer.appendChild(methodSelectWrapper);
-        }
     }
 
+    async addDisplayToggleEventListeners(displayFlexButtonId, displayGridButtonId)
+    {
+        const displayFlexButton = document.getElementById(displayFlexButtonId);
+        const displayGridButton = document.getElementById(displayGridButtonId);
+        if (!displayFlexButton || !displayGridButton) return; // Can't proceed without buttons
+
+        // Set initial active state
+        if (this.storage.displayFlex)
+        {
+            displayFlexButton.classList.add("active");
+            displayGridButton.classList.remove("active");
+        }
+        else
+        {
+            displayFlexButton.classList.remove("active");
+            displayGridButton.classList.add("active");
+        }
+
+        // Toggle display mode on click
+        displayFlexButton.addEventListener("click", async () =>
+        {
+            if (this.storage.displayFlex) return; // Already in flex mode
+
+            this.toggleLoader();
+            const previousStorage = structuredClone(this.storage);
+
+            // Update storage
+            this.storage.displayFlex = true;
+            await chrome.storage.local.set(this.storage);
+            await this.onStorageChange(previousStorage);
+
+            // Update button states
+            displayFlexButton.classList.add("active");
+            displayGridButton.classList.remove("active");
+
+            // Update prayer display mode
+            const prayerElements = document.querySelectorAll(".prayer");
+            prayerElements.forEach(el =>
+            {
+                el.classList.add("display-flex");
+            });
+
+            this.toggleLoader();
+        });
+
+        displayGridButton.addEventListener("click", async () =>
+        {
+            if (!this.storage.displayFlex) return; // Already in grid mode
+
+            this.toggleLoader();
+            const previousStorage = structuredClone(this.storage);
+
+            // Update storage
+            this.storage.displayFlex = false;
+            await chrome.storage.local.set(this.storage);
+            await this.onStorageChange(previousStorage);
+
+            // Update button states
+            displayFlexButton.classList.remove("active");
+            displayGridButton.classList.add("active");
+
+            // Update prayer display mode
+            const prayerElements = document.querySelectorAll(".prayer");
+            prayerElements.forEach(el =>
+            {
+                el.classList.remove("display-flex");
+            });
+
+            this.toggleLoader();
+        });
+    }
 
     awaitBackgroundMessage(messageAction)
     {
@@ -617,72 +647,6 @@ class PopupController
             };
             chrome.runtime.onMessage.addListener(listener);
         });
-    }
-
-    // TODO clean and save to storage
-    async appendPrayerDisplayToggleButton()
-    {
-        // Check if already appended
-        let displayToggleButton = document.getElementById("display-toggle");
-        if (displayToggleButton) return;
-
-        const container = document.createElement("div");
-        container.className = "flex-container";
-
-        const settingsSvg = await fetch("icons/align-justify-space-around.svg").then(res => res.text());
-        displayToggleButton = document.createElement("button");
-        displayToggleButton.id = "display-toggle";
-        displayToggleButton.className = "icon-button";
-        displayToggleButton.innerHTML = settingsSvg;
-        displayToggleButton.addEventListener("click", async () =>
-        {
-            this.toggleLoader();
-
-            const prayerElements = document.querySelectorAll(".prayer");
-            prayerElements.forEach(el =>
-            {
-                el.classList.add("display-flex");
-            });
-
-            const previousStorage = structuredClone(this.storage);
-            this.storage.displayFlex = true;
-
-            // Update storage
-            await chrome.storage.local.set(this.storage);
-            await this.onStorageChange(previousStorage);
-
-            this.toggleLoader();
-        });
-
-        const settings2Svg = await fetch("icons/align-space-around.svg").then(res => res.text());
-        const displayToggleButton2 = document.createElement("button");
-        displayToggleButton2.id = "display-toggle-2";
-        displayToggleButton2.className = "icon-button";
-        displayToggleButton2.innerHTML = settings2Svg;
-        displayToggleButton2.addEventListener("click", async () =>
-        {
-            this.toggleLoader();
-
-            const prayerElements = document.querySelectorAll(".prayer");
-            prayerElements.forEach(el =>
-            {
-                el.classList.remove("display-flex");
-            });
-
-            const previousStorage = structuredClone(this.storage);
-            this.storage.displayFlex = false;
-
-            // Update storage
-            await chrome.storage.local.set(this.storage);
-            await this.onStorageChange(previousStorage);
-
-            this.toggleLoader();
-        });
-
-        // Append
-        container.append(displayToggleButton);
-        container.append(displayToggleButton2);
-        this.settingsPageGridContainer.appendChild(container);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -709,8 +673,8 @@ document.addEventListener("DOMContentLoaded", async () =>
     const popupController = await PopupController.init();
 
     // Header
-    popupController.appendLogoIcon();
-    popupController.appendSettingsButton();
+    // popupController.appendLogoIcon();
+    popupController.addSettingsButtonEventListeners();
 
     // Main Page
     if (popupController.storage && popupController.storage.prayerTimes)
@@ -720,18 +684,19 @@ document.addEventListener("DOMContentLoaded", async () =>
     }
 
     // Settings Page
-    popupController.appendLocationInput();
+    popupController.addLocationEventListeners();
     const dropdowns = [
-        { labelText: "Prayer Calculation Method", optionsDictionary: utils.PRAYER_CALCULATION_METHOD_IDS, controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "calculationMethodId" },
-        { labelText: "Asr Jurisdiction Method", optionsDictionary: utils.ASR_JURISDICTION_METHOD_IDS, controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "asrMethodId" },
-        { labelText: "Notifications Minutes Before", optionsDictionary: utils.NOTIFICATIONS_MINUTES_BEFORE_OPTIONS, controllerParentObject: popupController.storage, controllerParentObjectKey: "notificationsMinutesBefore", containerId: "notifications-container" },
-    ];
+        { methodSelectId: "prayer-calculation-method-select", optionsContainerId: "prayer-calculation-method-options", controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "calculationMethodId" },
+        { methodSelectId: "asr-jurisdiction-method-select", optionsContainerId: "asr-jurisdiction-method-options", controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "asrMethodId" },
+        { methodSelectId: "notifications-minutes-before-select", optionsContainerId: "notifications-minutes-before-options", controllerParentObject: popupController.storage, controllerParentObjectKey: "notificationsMinutesBefore" },
+    ]
     for (const config of dropdowns)
     {
-        await popupController.appendDropdown(config);
+        await popupController.addDropdownEventListeners(config);
     }
-    popupController.createNotificationToggle("notifications-container");
-    popupController.appendPrayerDisplayToggleButton();
+
+    popupController.addNotificationEventListeners("notifications-button");
+    popupController.addDisplayToggleEventListeners("display-flex", "display-grid");
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
