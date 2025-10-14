@@ -4,11 +4,7 @@ class PopupController
 {
     constructor(storage)
     {
-        this.storage = this._makeReactive(storage, (previousStorage) =>
-        {
-            this.onStorageChange?.(previousStorage);
-        });
-
+        this.storage = storage;
         this.mainPageGridContainer = document.querySelectorAll(".grid-container")[0];
         this.settingsPageGridContainer = document.querySelectorAll(".grid-container")[1];
 
@@ -36,51 +32,6 @@ class PopupController
     {
         const storage = await chrome.storage.local.get(null);
         return new PopupController(storage);
-    }
-
-    _makeReactive(obj, callback, path = [])
-    {
-        if (typeof obj !== 'object' || obj === null) return obj;
-
-        const handler = {
-            set: (target, prop, value) =>
-            {
-                // Clone plain data version before the change
-                const previousStorage = JSON.parse(JSON.stringify(this._getRawObject(this.storage)));
-
-                target[prop] = this._makeReactive(value, callback, [...path, prop]);
-
-                callback(previousStorage);
-                return true;
-            },
-            deleteProperty: (target, prop) =>
-            {
-                const previousStorage = JSON.parse(JSON.stringify(this._getRawObject(this.storage)));
-                delete target[prop];
-                callback(previousStorage);
-                return true;
-            }
-        };
-
-        for (const key of Object.keys(obj))
-        {
-            obj[key] = this._makeReactive(obj[key], callback, [...path, key]);
-        }
-
-        return new Proxy(obj, handler);
-    }
-
-    _getRawObject(obj)
-    {
-        if (obj === null || typeof obj !== 'object') return obj;
-        if (Array.isArray(obj)) return obj.map(o => this._getRawObject(o));
-
-        const raw = {};
-        for (const [key, value] of Object.entries(obj))
-        {
-            raw[key] = this._getRawObject(value);
-        }
-        return raw;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,11 +368,11 @@ class PopupController
                 prayerContainer.addEventListener("click", async () =>
                 {
                     // Clone previous storage for comparison
-                    // const previousStorage = structuredClone(this.storage);
+                    const previousStorage = structuredClone(this.storage);
 
                     // Update storage
                     this.storage.isPrayed = !this.storage.isPrayed;
-                    // await this.onStorageChange(previousStorage);
+                    await this.onStorageChange(previousStorage);
                 });
 
                 // Update background color
@@ -464,7 +415,7 @@ class PopupController
                 option.addEventListener("click", async () =>
                 {
                     this.toggleLoader();
-                    // const previousStorage = structuredClone(this.storage);
+                    const previousStorage = structuredClone(this.storage);
 
                     // Update storage with selected location
                     locationResultsContainer.style.display = "none";
@@ -477,7 +428,7 @@ class PopupController
                         this.storage.parameters = this.updateParameters(locationDetails);
 
                         // Update storage
-                        // await this.onStorageChange(previousStorage);
+                        await this.onStorageChange(previousStorage);
 
                         // Update displayed prayer times
                         await this.updateAndDisplayPrayerTimes();
@@ -589,14 +540,11 @@ class PopupController
             option.addEventListener("click", async () =>
             {
                 this.toggleLoader();
-
-                //sleep
-                await new Promise(res => setTimeout(res, 300));
-                // const previousStorage = structuredClone(this.storage);
+                const previousStorage = structuredClone(this.storage);
 
                 // Update storage
                 controllerParentObject[controllerParentObjectKey] = option.getAttribute("value");
-                // await this.onStorageChange(previousStorage);
+                await this.onStorageChange(previousStorage);
 
                 // Remove selected class from all options
                 optionsContainer.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
@@ -639,11 +587,11 @@ class PopupController
         notificationsButton.addEventListener("click", async () =>
         {
             this.toggleLoader();
-            // const previousStorage = structuredClone(this.storage);
+            const previousStorage = structuredClone(this.storage);
 
             // Update storage
             this.storage.isNotificationsOn = !this.storage.isNotificationsOn;
-            // await this.onStorageChange(previousStorage);
+            await this.onStorageChange(previousStorage);
 
             // Update icon
             const newSvgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
@@ -692,14 +640,14 @@ class PopupController
 
         const updateDisplayMode = async (mode) =>
         {
-            if (this.storage.display === mode) return; // No change needed
+            if (this.storage.display === mode) return;
 
             this.toggleLoader();
 
-            // Update storage
+            const previousStorage = { ...this.storage };
             this.storage.display = mode;
+            await this.onStorageChange(previousStorage);
 
-            // Update UI
             setActiveButton(mode);
             applyDisplayMode(mode);
 
