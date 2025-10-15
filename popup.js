@@ -507,7 +507,7 @@ class PopupController
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dropdowns                                                                                      //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    async addDropdownEventListeners({ methodSelectId, optionsContainerId, controllerParentObject, controllerParentObjectKey })
+    async addDropdownEventListeners({ methodSelectId, optionsContainerId, getStorageSection, settingKey, controllerParentObject, controllerParentObjectKey })
     {
         const methodSelect = document.getElementById(methodSelectId);
         if (!methodSelect) return; // Can't proceed without method select button
@@ -518,8 +518,12 @@ class PopupController
         const optionsContainer = document.getElementById(optionsContainerId);
         if (!optionsContainer) return; // Can't proceed without options container
 
+        const storageSection = getStorageSection?.();
+        if (!storageSection) return; // Can't proceed without storage section
+        if (!settingKey || !(settingKey in storageSection)) return; // Can't proceed without valid setting key
+
         // Set chosen option
-        const chosenOptionValue = controllerParentObject[controllerParentObjectKey];
+        const chosenOptionValue = storageSection[settingKey];
         const chosenOptionText = optionsContainer.querySelector(`.options div[value='${chosenOptionValue}']`)?.textContent;
         if (!chosenOptionText) return; // Can't proceed without chosen option text
 
@@ -542,8 +546,16 @@ class PopupController
                 this.toggleLoader();
                 const previousStorage = structuredClone(this.storage);
 
+                // Update storage dynamically using the latest section
+                const sectionNow = getStorageSection?.();
+                if (!sectionNow)
+                {
+                    this.toggleLoader();
+                    return;
+                }
+
                 // Update storage
-                controllerParentObject[controllerParentObjectKey] = option.getAttribute("value");
+                sectionNow[settingKey] = option.getAttribute("value");
                 await this.onStorageChange(previousStorage);
 
                 // Remove selected class from all options
@@ -717,9 +729,9 @@ document.addEventListener("DOMContentLoaded", async () =>
     // Settings Page
     popupController.addLocationEventListeners();
     const dropdowns = [
-        { methodSelectId: "prayer-calculation-method-select", optionsContainerId: "prayer-calculation-method-options", controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "calculationMethodId" },
-        { methodSelectId: "asr-jurisdiction-method-select", optionsContainerId: "asr-jurisdiction-method-options", controllerParentObject: popupController.storage.parameters, controllerParentObjectKey: "asrMethodId" },
-        { methodSelectId: "notifications-minutes-before-select", optionsContainerId: "notifications-minutes-before-options", controllerParentObject: popupController.storage, controllerParentObjectKey: "notificationsMinutesBefore" },
+        { methodSelectId: "prayer-calculation-method-select", optionsContainerId: "prayer-calculation-method-options", getStorageSection: () => popupController.storage.parameters, settingKey: "calculationMethodId" },
+        { methodSelectId: "asr-jurisdiction-method-select", optionsContainerId: "asr-jurisdiction-method-options", getStorageSection: () => popupController.storage.parameters, settingKey: "asrMethodId" },
+        { methodSelectId: "notifications-minutes-before-select", optionsContainerId: "notifications-minutes-before-options", getStorageSection: () => popupController.storage, settingKey: "notificationsMinutesBefore" },
     ]
     for (const config of dropdowns)
     {
