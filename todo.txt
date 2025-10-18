@@ -1,4 +1,3 @@
 - update prayer times when its getting too little dates left
-- fix display flex or block
 - clean background.js
 - finalize cleaning popup.js
