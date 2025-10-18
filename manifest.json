@@ -1,35 +1,31 @@
 {
-    "manifest_version": 3,
-    "name": "Prayer Times (Namaz Vakitleri)",
-    "description": "Display prayer times for your location.",
-    "version": "0.5.0",
-    "icons": {
-        "16": "icons/icon16.png",
-        "48": "icons/icon48.png",
-        "128": "icons/icon128.png"
-    },
-    "action": {
-        "default_icon": {
-            "16": "icons/icon16.png",
-            "48": "icons/icon48.png",
-            "128": "icons/icon128.png"
-        },
-        "default_title": "Prayer Times / Namaz Vakitleri",
-        "default_popup": "popup.html"
-    },
-    "permissions": [
-        "alarms",
-        "idle",
-        "storage",
-        "notifications"
-    ],
-    "background": {
-        "service_worker": "background.js",
-        "type": "module"
-    },
-    "host_permissions": [
+	"manifest_version": 3,
+	"name": "Prayer Times (Namaz Vakitleri)",
+	"description": "Display prayer times for your location.",
+	"version": "1.0.0",
+	"icons": {
+		"16": "src/assets/icon16.png",
+		"48": "src/assets/icon48.png",
+		"128": "src/assets/icon128.png"
+	},
+	"action": {
+		"default_icon": {
+			"16": "src/assets/icon16.png",
+			"48": "src/assets/icon48.png",
+			"128": "src/assets/icon128.png"
+		},
+		"default_title": "Prayer Times / Namaz Vakitleri",
+		"default_popup": "src/pages/popup.html"
+	},
+	"permissions": ["alarms", "idle", "storage", "notifications"],
+	"background": {
+		"service_worker": "src/js/background.js",
+		"type": "module"
+	},
+	"host_permissions": [
 		"*://*.namazvakitleri.diyanet.gov.tr/*",
-        "*://*.islamvakti.com/*",
-        "*://*.islamicfinder.us/*"
+		"*://*.islamvakti.com/*",
+		"*://*.islamicfinder.us/*",
+		"*://nominatim.openstreetmap.org/*"
 	]
 }

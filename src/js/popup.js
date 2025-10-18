@@ -44,7 +44,7 @@ class PopupController
         if (logoIcon) return;
 
         // Create logo icon element
-        const logoSvg = await fetch("icons/icon.svg").then(res => res.text());
+        const logoSvg = await fetch("../assets/icon.svg").then(res => res.text());
         logoIcon = document.createElement("div");
         logoIcon.id = "logo-icon";
         logoIcon.innerHTML = logoSvg;
@@ -195,7 +195,7 @@ class PopupController
     updateParameters(locationDetails)
     {
         // Extract zip code without extra details (e.g., "12345-6789" -> "12345")
-        const zipCode = locationDetails.address.postcode?.split(" ")[0] ?? "";
+        const zipCode = locationDetails.address.postcode ? String(locationDetails.address.postcode).split(/[-\s]/)[0] : "";
 
         // Merge existing parameters with the new location data and coordinates
         // Any overlapping keys (e.g., city, state, country) from the new location
@@ -315,7 +315,7 @@ class PopupController
         if (!dailyPrayerTimes || !Array.isArray(dailyPrayerTimes.times))
         {
             utils.timeLog("No daily prayer times available to display.");
-            this.gridContainer.querySelectorAll(".prayer").forEach(element => element.remove());
+            this.mainPageGridContainer.querySelectorAll(".prayer").forEach(element => element.remove());
             return;
         }
 
@@ -336,7 +336,8 @@ class PopupController
                 // Create prayer elements
                 prayerContainer = document.createElement("button");
                 prayerContainer.className = "prayer";
-                if (this.storage.displayFlex) prayerContainer.classList.add("display-flex");
+                if (this.storage.display === "flex") prayerContainer.classList.add("display-flex");
+                if (this.storage.display === "columns") prayerContainer.classList.add("display-columns");
 
                 const nameSpan = document.createElement("span");
                 nameSpan.className = "prayer-name";
@@ -472,7 +473,16 @@ class PopupController
         {
             locationName.contentEditable = true;
             locationName.focus();
-            document.execCommand("selectAll", false, null); // Select all text for easy replacement
+
+            // Select all text content in a standards-compliant way
+            const range = document.createRange();
+            range.selectNodeContents(locationName);
+            const sel = window.getSelection();
+            if (sel)
+            {
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
         });
 
         // Handle location name changes on enter key press
@@ -507,7 +517,7 @@ class PopupController
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dropdowns                                                                                      //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    async addDropdownEventListeners({ methodSelectId, optionsContainerId, getStorageSection, settingKey, controllerParentObject, controllerParentObjectKey })
+    async addDropdownEventListeners({ methodSelectId, optionsContainerId, getStorageSection, settingKey })
     {
         const methodSelect = document.getElementById(methodSelectId);
         if (!methodSelect) return; // Can't proceed without method select button
@@ -524,7 +534,7 @@ class PopupController
 
         // Set chosen option
         const chosenOptionValue = storageSection[settingKey];
-        const chosenOptionText = optionsContainer.querySelector(`.options div[value='${chosenOptionValue}']`)?.textContent;
+        const chosenOptionText = optionsContainer.querySelector(`div[value='${chosenOptionValue}']`)?.textContent;
         if (!chosenOptionText) return; // Can't proceed without chosen option text
 
         methodName.textContent = chosenOptionText;
@@ -588,7 +598,7 @@ class PopupController
         if (!notificationsButton) return; // Can't proceed without button
 
         // Set initial icon
-        const svgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
+        const svgPath = this.storage.isNotificationsOn ? "../assets/icons/bell.svg" : "../assets/icons/bell-slash.svg";
         const bellSvg = await fetch(svgPath).then(res => res.text());
         notificationsButton.innerHTML = bellSvg;
 
@@ -606,7 +616,7 @@ class PopupController
             await this.onStorageChange(previousStorage);
 
             // Update icon
-            const newSvgPath = this.storage.isNotificationsOn ? "icons/bell.svg" : "icons/bell-slash.svg";
+            const newSvgPath = this.storage.isNotificationsOn ? "../assets/icons/bell.svg" : "../assets/icons/bell-slash.svg";
             const newSvg = await fetch(newSvgPath).then(res => res.text());
             notificationsButton.innerHTML = newSvg;
 
@@ -760,7 +770,7 @@ document.addEventListener("DOMContentLoaded", async () =>
         // Location dropdown
         const locationContainer = document.querySelector(".location-container>.options");
         const locationSpan = document.querySelector(".location-name");
-        if (!locationContainer.contains(event.target) && event.target !== locationSpan)
+        if (locationContainer && locationSpan && !locationContainer.contains(event.target) && event.target !== locationSpan)
         {
             locationContainer.style.display = "none";
             locationSpan.contentEditable = false;

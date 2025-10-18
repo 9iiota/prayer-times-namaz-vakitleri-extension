@@ -1,5 +1,5 @@
 import { countryMap } from "./country-map.js";
-import Fuse from "./libs/fuse.min.mjs";
+import Fuse from "../libs/fuse.min.mjs";
 import * as utils from "./utils.js";
 
 class BackgroundController
@@ -13,6 +13,11 @@ class BackgroundController
         this.badgeBackgroundColor = "";
         this.badgeTaskIntervalMs = 60 * 1000; // Default to 1 minute
         this.badgeTaskId = null;
+
+        // Auto-refresh prayer times when few remaining days are left
+        this.refreshThresholdDays = 5; // Trigger refresh when remaining days <= threshold
+        this.refreshCooldownMs = 6 * 60 * 60 * 1000; // Minimum interval between refresh attempts
+        this.lastRefreshAttempt = 0;
 
         if (this.storage.prayerTimes)
         {
@@ -53,22 +58,6 @@ class BackgroundController
                 }
             }
         });
-
-        // chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) =>
-        // {
-        //     if (message.action === "fetchPrayerTimes")
-        //     {
-        //         const { countryId, city, state } = message.data;
-
-        //         const cities = await this.fetchCitiesIslamVakti(countryId)
-        //         const cityId = this.fuzzySearch(city, cities)?.id;
-        //         if (!cityId) throw new Error(`City not found: ${city} in country ID: ${countryId}`);
-
-        //         const prayerTimes = await this.fetchPrayerTimesIslamVakti(countryId, cityId);
-        //         console.log(prayerTimes);
-        //         // this.storage.prayerTimes = prayerTimes;
-        //     }
-        // });
     }
 
     static instance = null;
@@ -293,50 +282,6 @@ class BackgroundController
         return prayerTimes;
     }
 
-    async retrieveCityId(countryId, city, state)
-    {
-        // Fetch the country/state list
-        const res = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=country&CountryId=${encodeURIComponent(countryId)}&Culture=en-US`);
-        if (!res.ok) throw new Error('Network response not ok');
-        console.log(res);
-        const json = await res.json();
-
-        let citiesList = [];
-
-        if (json.HasStateList)
-        {
-            // Fallback to StateList if StateRegionList is null
-            const states = json.StateList.map(item =>
-            {
-                const values = Object.values(item);
-                return { name: values[2]?.trim(), id: values[3] };
-            }).filter(item => item.name && item.id);
-
-            const bestStateMatchObj = this.fuzzySearch(state || city, states); // { name: "", id: "" }
-            if (!bestStateMatchObj) return null;
-
-            const stateRes = await fetch(`https://namazvakitleri.diyanet.gov.tr/en-US/home/GetRegList?ChangeType=state&CountryId=${encodeURIComponent(countryId)}&StateId=${encodeURIComponent(bestStateMatchObj.id)}&Culture=en-US`);
-            if (!stateRes.ok) throw new Error('Network response not ok');
-            const stateJson = await stateRes.json();
-            citiesList = stateJson.StateRegionList || [];
-        }
-        else
-        {
-            citiesList = json.StateRegionList;
-        }
-
-        // Map cities to simplified objects
-        const cities = citiesList.map(item =>
-        {
-            const values = Object.values(item);
-            return { name: values[values.length - 2]?.trim(), id: values[values.length - 1] };
-        }).filter(item => item.name && item.id);
-
-        // Fuzzy search for best city match
-        const bestCityMatch = this.fuzzySearch(city, cities);
-        return bestCityMatch?.id || null;
-    }
-
     static async init()
     {
         if (BackgroundController.instance)
@@ -347,7 +292,6 @@ class BackgroundController
 
         try
         {
-            // chrome.local.storage.clear(); // TODO test when less than 1 hour
             const keys = Object.keys(utils.DEFAULT_STORAGE_VALUES);
             const existing = await chrome.storage.local.get(keys);
 
@@ -361,6 +305,8 @@ class BackgroundController
             utils.timeLog('Initialized storage with default values:', merged);
 
             BackgroundController.instance = new BackgroundController(merged);
+            // Kick off a low-remaining check (non-blocking)
+            BackgroundController.instance.attemptRefreshPrayerTimesIfLow().catch(() => { });
             return BackgroundController.instance;
         }
         catch (error)
@@ -452,6 +398,9 @@ class BackgroundController
         }
 
         this.updateBadgeColors();
+
+        // Opportunistically refresh data if we are running low
+        this.attemptRefreshPrayerTimesIfLow().catch(() => { });
 
         if (this.storage.isNotificationsOn && timeDifference === `${this.storage.notificationsMinutesBefore}m`)
         {
@@ -579,7 +528,6 @@ class BackgroundController
         this.storage.parameters = change.newValue;
         utils.timeLog('parameters changed from', change.oldValue, 'to', change.newValue);
 
-        // TODO clean up
         const prayerTimes = await this.fetchPrayerTimes();
         if (prayerTimes)
         {
@@ -588,6 +536,55 @@ class BackgroundController
             this.todayPrayerTimes = null;
             this.nextPrayerIndex = null;
             await this.startBadgeTask();
+        }
+    }
+
+    async getRemainingPrayerDaysCount()
+    {
+        try
+        {
+            const storage = await chrome.storage.local.get(['prayerTimes']);
+            if (!storage.prayerTimes || storage.prayerTimes.length === 0) return null;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const remaining = storage.prayerTimes.filter(pt => pt.date >= todayStr).length;
+            return remaining;
+        }
+        catch (error)
+        {
+            console.error('Error counting remaining prayer days:', error);
+            return null;
+        }
+    }
+
+    async attemptRefreshPrayerTimesIfLow()
+    {
+        const now = Date.now();
+        if (now - this.lastRefreshAttempt < this.refreshCooldownMs) return;
+
+        const remaining = await this.getRemainingPrayerDaysCount();
+        if (remaining === null) return;
+
+        if (remaining <= this.refreshThresholdDays)
+        {
+            this.lastRefreshAttempt = now;
+            try
+            {
+                utils.timeLog(`Remaining prayer days: ${remaining} (<= ${this.refreshThresholdDays}). Refreshing...`);
+                const prayerTimes = await this.fetchPrayerTimes();
+                if (prayerTimes && prayerTimes.length > 0)
+                {
+                    await chrome.storage.local.set({ prayerTimes });
+                    this.storage.prayerTimes = prayerTimes;
+                    this.todayPrayerTimes = null;
+                    this.nextPrayerIndex = null;
+                    await this.startBadgeTask();
+                    utils.timeLog(`Refreshed prayer times. New count: ${prayerTimes.length}.`);
+                }
+            }
+            catch (error)
+            {
+                console.error('Error refreshing prayer times when low:', error);
+            }
         }
     }
 
@@ -607,46 +604,6 @@ class BackgroundController
             console.error('Error getting prayer times for date:', error);
             return null;
         }
-    }
-
-    getTimeFromNowBadgeFormatted(endTimeFormatted)
-    {
-        const startTimeFormatted = utils.getCurrentTimeFormatted(); // Extra minutes can be added for testing purposes
-        const [hours1, minutes1] = startTimeFormatted.split(':').map(Number);
-        const [hours2, minutes2] = endTimeFormatted.split(':').map(Number);
-
-        const startDate = new Date();
-        startDate.setHours(hours1, minutes1, 0, 0);
-
-        const endDate = new Date();
-        endDate.setHours(hours2, minutes2, 0, 0);
-
-        let diffMs = endDate - startDate;
-        if (diffMs < 0)
-        {
-            // TODO idk if this works correctly
-            // Add 24 hours if end time is on the next day
-            diffMs += 24 * 60 * 60 * 1000;
-        }
-
-        // If time difference is 1 minute or less, return the amount of seconds
-        if (diffMs <= 60 * 1000)
-        {
-            const diffSeconds = Math.floor(diffMs / 1000);
-            return `${diffSeconds}s`;
-        }
-
-        // If time difference is less than 1 hour, return the amount of minutes
-        if (diffMs < 60 * 60 * 1000)
-        {
-            const diffMinutes = Math.floor(diffMs / (1000 * 60));
-            return `${diffMinutes}m`;
-        }
-
-        // Else return the amount of hours and minutes padded with a leading zero if needed
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        return `${diffHours}:${diffMinutes.toString().padStart(2, '0')}`;
     }
 }
 
