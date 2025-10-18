@@ -318,7 +318,7 @@ class BackgroundController
     sendNotification(message)
     {
         const notificationOptions = {
-            iconUrl: "icons/icon128.png",
+            iconUrl: "../assets/icon128.png",
             priority: 2,
             message: message,
             title: "Prayer Times",
