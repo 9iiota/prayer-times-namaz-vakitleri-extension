@@ -1,1 +1,0 @@
-- update prayer times when its getting too little dates left

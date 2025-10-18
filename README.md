@@ -1,4 +1,4 @@
-# Prayer Times / Namaz Vakitleri Chrome Extension
+# Prayer Times (Namaz Vakitleri) Chrome Extension
 
 [Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln)
 
@@ -6,45 +6,45 @@
 
 ## Description
 
-Prayer Times / Namaz Vakitleri is a Chrome extension that allows users to view daily Islamic prayer times for their location. The extension fetches accurate prayer times either by scraping the official Diyanet site or using an API fallback. It also provides notifications and visual cues for current and upcoming prayers.
+**Prayer Times (Namaz Vakitleri)** is a Chrome extension that allows users to view daily Islamic prayer times for their location.  
+It fetches accurate prayer times from multiple reliable sources and provides notifications, badges, and visual indicators for upcoming and current prayers.
 
 ---
 
 ## Features
 
-* Display daily prayer times based on your location.
-* Automatic calculation of prayer times using multiple methods:
-  * Jafari - Ithna Ashari
-  * Karachi - University of Islamic Sciences
-  * ISNA - Islamic Society of North America
-  * MWL - Muslim World League
-  * Mecca - Umm al-Qura
-  * Egyptian General Authority of Survey
-  * Diyanet İşleri Başkanlığı (official Turkey site)
-  * And more...
-* Asr Jurisdiction Method selection (Shafi, Hanbali, Maliki or Hanafi).
-* Location search with autocomplete using OpenStreetMap Nominatim.
-* Badge displaying the time remaining until the next prayer.
-* Highlights the current prayer in the popup and changes background color when the prayer is marked as completed.
+-   🌍 **Automatic location support** using OpenStreetMap Nominatim.
+-   🕌 **Accurate daily prayer times** from:
+    -   Diyanet İşleri Başkanlığı
+    -   IslamVakti.com
+    -   IslamicFinder API
+-   🕐 **Dynamic badge** showing time until the next prayer.
+-   🔔 **Smart notifications** configurable by minutes before prayer.
+-   🧭 **Customizable calculation methods** (Jafari, ISNA, MWL, Diyanet, etc.).
+-   🕌 **Asr Jurisdiction** selection (Shafi, Hanbali, Maliki or Hanafi).
+-   💡 **Prayer display styles** (Grid, Flex, Columns).
+-   ✅ **Interactive popup UI** with visual highlighting for current prayer.
+-   🔄 **Auto-refresh** of prayer data when nearing the end of stored days.
 
 ---
 
 ## Installation
 
-1. Install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln).
-2. Open the extension popup to set your location and preferred calculation methods.
-3. The extension will automatically fetch and display prayer times.
+1. Download or install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln).
+2. Click on the extension icon to open the popup.
+3. Configure your location and preferred settings.
+4. Prayer times will automatically display and update daily.
 
 ---
 
 ## Usage
 
-1. Open the popup by clicking the extension icon.
-2. Select your desired **Prayer Calculation Method** and **Asr Jurisdiction Method** from the dropdown menus.
-3. Click on the location field to type your city name, then press Enter.
-4. Choose your location from the autocomplete results.
-5. Daily prayer times will be displayed, with the current prayer highlighted.
-6. Click on a prayer to mark it as prayed; the background color will change.
+1. Click on the **extension icon** in Chrome’s toolbar.
+2. Use the **location field** to type your city name (powered by Nominatim).
+3. Select your **Prayer Calculation Method** and **Asr Method**.
+4. Adjust **notification settings** and **display style** as desired.
+5. The **badge** will show remaining time until the next prayer.
+6. Click on a prayer time in the popup to mark it as _prayed_.
 
 ---
 
@@ -52,35 +52,68 @@ Prayer Times / Namaz Vakitleri is a Chrome extension that allows users to view d
 
 ### Folder Structure
 
-* `popup.js` - Handles the popup UI and interaction logic.
-* `background.js` - Handles badge updates and background storage sync.
-* `utils.js` - Utility functions and constants.
-* `country-map.js` - Mapping of countries for API usage.
-* `libs/fuse.min.mjs` - Fuzzy search library.
-* `manifest.json` - Chrome extension manifest file.
+```
+src/
+├── assets/          # Icons and SVG assets
+├── js/              # Core logic (background.js, popup.js, utils.js, etc.)
+├── libs/            # External libraries (e.g. Fuse.js for fuzzy search)
+├── pages/           # Popup HTML file
+├── styles/          # Extension styling (CSS)
+manifest.json        # Chrome extension manifest
+```
 
-### Running Locally
+### Key Scripts
 
-1. Clone the repository.
-2. Open Chrome and navigate to `chrome://extensions/`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the cloned repository folder.
+-   **background.js** – Handles background logic, badge updates, notifications, and data fetching.
+-   **popup.js** – Controls popup UI interactions and location search.
+-   **utils.js** – Contains constants, helper functions, and default storage values.
+-   **country-map.js** – Provides country mappings for APIs.
+-   **fuse.min.mjs** – Enables fuzzy search for city/state names.
+
+### Run Locally
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/9iiota/prayer-times-namaz-vakitleri-extension.git
+    ```
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable **Developer mode** (top right)
+4. Click **Load unpacked** and select the project folder.
+5. The extension should now appear in your Chrome toolbar.
+
+---
+
+## Permissions
+
+This extension requires the following permissions:
+
+-   `storage` — Save user preferences and prayer times.
+-   `alarms` — Keep background worker alive for periodic updates.
+-   `notifications` — Display prayer notifications.
+-   `idle` — Detect user activity to refresh prayer times.
+-   Host permissions for:
+    -   `namazvakitleri.diyanet.gov.tr`
+    -   `islamvakti.com`
+    -   `islamicfinder.us`
+    -   `nominatim.openstreetmap.org`
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Feel free to fork the repository and submit pull requests.
+Pull requests and contributions are welcome!  
+If you'd like to suggest a feature or fix a bug, please open an issue on GitHub.
 
 ---
 
 ## License
 
-This project is open-source and licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License**.  
+See [LICENSE](LICENSE) for details.
 
 ---
 
 ## Links
 
-* [GitHub Repository](https://github.com/9iiota/prayer-times-namaz-vakitleri-extension)
-* [Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln)
+-   🌐 [GitHub Repository](https://github.com/9iiota/prayer-times-namaz-vakitleri-extension)
+-   🛍️ [Chrome Web Store](https://chromewebstore.google.com/detail/prayer-times-namaz-vakitl/oimnhapeodnoooifimgnjcbnjoedbiln)

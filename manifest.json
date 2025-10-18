@@ -14,7 +14,7 @@
 			"48": "src/assets/icon48.png",
 			"128": "src/assets/icon128.png"
 		},
-		"default_title": "Prayer Times / Namaz Vakitleri",
+		"default_title": "Prayer Times (Namaz Vakitleri)",
 		"default_popup": "src/pages/popup.html"
 	},
 	"permissions": ["alarms", "idle", "storage", "notifications"],
