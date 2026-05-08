@@ -705,6 +705,45 @@ class PopupController
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Miscellaneous                                                                                  //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    async showReviewPromptIfNeeded()
+    {
+        const INITIAL_THRESHOLD = 5;
+        const LATER_INCREMENT = 10;
+
+        const reviewState = this.storage.reviewState ?? { openCount: 0, dismissed: false, threshold: INITIAL_THRESHOLD };
+        reviewState.openCount = (reviewState.openCount ?? 0) + 1;
+        this.storage.reviewState = reviewState;
+        chrome.storage.local.set({ reviewState });
+
+        if (reviewState.dismissed || reviewState.openCount < reviewState.threshold) return;
+
+        const modal = document.getElementById("review-modal");
+        if (!modal) return;
+        modal.classList.add("visible");
+
+        document.getElementById("review-button-yes").addEventListener("click", () =>
+        {
+            chrome.tabs.create({ url: `https://chromewebstore.google.com/detail/${chrome.runtime.id}` });
+            reviewState.dismissed = true;
+            chrome.storage.local.set({ reviewState });
+            modal.classList.remove("visible");
+        });
+
+        document.getElementById("review-button-later").addEventListener("click", () =>
+        {
+            reviewState.threshold = reviewState.openCount + LATER_INCREMENT;
+            chrome.storage.local.set({ reviewState });
+            modal.classList.remove("visible");
+        });
+
+        document.getElementById("review-button-no").addEventListener("click", () =>
+        {
+            reviewState.dismissed = true;
+            chrome.storage.local.set({ reviewState });
+            modal.classList.remove("visible");
+        });
+    }
+
     toggleLoader()
     {
         let loader = document.querySelector(".loader");
@@ -750,6 +789,9 @@ document.addEventListener("DOMContentLoaded", async () =>
 
     popupController.addNotificationEventListeners("notifications-button");
     popupController.addDisplayToggleEventListeners("display-flex", "display-grid", "display-columns");
+
+    // Review prompt
+    popupController.showReviewPromptIfNeeded();
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", (event) =>
